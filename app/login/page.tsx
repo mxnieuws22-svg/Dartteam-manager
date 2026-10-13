@@ -33,7 +33,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gray-100 p-4">
+    <main className="flex min-h-screen items-center justify-center bg-green-50 p-4">
       <form
         onSubmit={handleSubmit}
         className="w-full max-w-sm space-y-4 rounded-lg bg-white p-6 shadow"
@@ -46,7 +46,7 @@ export default function LoginPage() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          className="w-full rounded border border-gray-300 p-2 text-gray-900"
+          className="w-full rounded border border-green-300 p-2 text-gray-900"
         />
 
         <input
@@ -55,7 +55,7 @@ export default function LoginPage() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
-          className="w-full rounded border border-gray-300 p-2 text-gray-900"
+          className="w-full rounded border border-green-300 p-2 text-gray-900"
         />
 
         {error && <p className="text-sm text-red-600">{error}</p>}
@@ -63,7 +63,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded bg-blue-600 p-2 font-semibold text-white disabled:opacity-50"
+          className="w-full rounded bg-green-700 p-2 font-semibold text-white disabled:opacity-50"
         >
           {loading ? "Bezig..." : "Inloggen"}
         </button>
