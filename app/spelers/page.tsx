@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useIsAdmin } from "@/lib/useIsAdmin";
 
 type Player = {
   id: string;
@@ -11,6 +12,7 @@ type Player = {
 
 export default function SpelersPage() {
   const supabase = createClient();
+  const isAdmin = useIsAdmin();
   const [players, setPlayers] = useState<Player[]>([]);
   const [name, setName] = useState("");
   const [isReserve, setIsReserve] = useState(false);
@@ -71,6 +73,7 @@ export default function SpelersPage() {
     <main className="mx-auto max-w-xl space-y-6 p-4">
       <h1 className="text-2xl font-bold">Spelers</h1>
 
+      {isAdmin && (
       <form onSubmit={addPlayer} className="space-y-3 rounded-lg border bg-white p-4">
         <input
           type="text"
@@ -95,6 +98,7 @@ export default function SpelersPage() {
           Toevoegen
         </button>
       </form>
+      )}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
@@ -109,12 +113,14 @@ export default function SpelersPage() {
               className="flex items-center justify-between rounded border bg-white p-2"
             >
               {p.name}
-              <button
+              {isAdmin && (
+<button
                 onClick={() => deletePlayer(p.id)}
                 className="text-sm text-red-600"
               >
                 Verwijderen
               </button>
+)}
             </li>
           ))}
         </ul>
@@ -131,12 +137,14 @@ export default function SpelersPage() {
               className="flex items-center justify-between rounded border bg-white p-2"
             >
               {p.name}
-              <button
+              {isAdmin && (
+<button
                 onClick={() => deletePlayer(p.id)}
                 className="text-sm text-red-600"
               >
                 Verwijderen
               </button>
+)}
             </li>
           ))}
         </ul>
