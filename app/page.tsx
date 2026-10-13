@@ -150,7 +150,7 @@ export default function Home() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <h3 className="mb-1 font-semibold">
-                    Spelers ({starters.length})
+                    Spelers
                   </h3>
                   <ul className="space-y-1">
                     {starters.map((n) => (
@@ -162,7 +162,7 @@ export default function Home() {
                 </div>
                 <div>
                   <h3 className="mb-1 font-semibold">
-                    Reserve ({reserves.length})
+                    Reserve
                   </h3>
                   <ul className="space-y-1">
                     {reserves.map((n) => (
