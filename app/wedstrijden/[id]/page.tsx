@@ -117,7 +117,7 @@ function WedstrijdDetail() {
   const reserves = players.filter((p) => lineup[p.id] === "reserve").length;
 
   return (
-    <main className="mx-auto max-w-xl space-y-6 p-4">
+    <main className="mx-auto max-w-2xl space-y-6 p-4">
       <Link href="/wedstrijden" className="text-sm text-green-700">
         ← Wedstrijden
       </Link>

@@ -70,7 +70,7 @@ export default function SpelersPage() {
   const reserves = players.filter((p) => p.is_reserve);
 
   return (
-    <main className="mx-auto max-w-xl space-y-6 p-4">
+    <main className="mx-auto max-w-2xl space-y-6 p-4">
       <h1 className="text-2xl font-bold">Spelers</h1>
 
       {isAdmin && (

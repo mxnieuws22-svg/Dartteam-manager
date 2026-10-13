@@ -21,6 +21,7 @@ export default function WedstrijdenPage() {
   const [matchDate, setMatchDate] = useState("");
   const [location, setLocation] = useState("");
   const [error, setError] = useState("");
+  const [today, setToday] = useState("");
 
   async function loadMatches() {
     const { data, error } = await supabase
@@ -32,6 +33,7 @@ export default function WedstrijdenPage() {
       setError("Wedstrijden laden mislukt.");
       return;
     }
+    setToday(new Date().toISOString().slice(0, 10));
     setMatches(data ?? []);
   }
 
@@ -72,8 +74,15 @@ export default function WedstrijdenPage() {
     loadMatches();
   }
 
+  const upcoming = matches.filter(
+    (m) => m.status === "planned" && m.match_date >= today
+  );
+  const past = matches
+    .filter((m) => !upcoming.includes(m))
+    .sort((a, b) => b.match_date.localeCompare(a.match_date));
+
   return (
-    <main className="mx-auto max-w-xl space-y-6 p-4">
+    <main className="mx-auto max-w-2xl space-y-6 p-4">
       <h1 className="text-2xl font-bold">Wedstrijden</h1>
 
       {isAdmin && (
@@ -111,43 +120,87 @@ export default function WedstrijdenPage() {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      <section>
-        <h2 className="mb-2 text-lg font-semibold">
-          Alle wedstrijden ({matches.length})
-        </h2>
-        <ul className="space-y-2">
-          {matches.map((m) => (
+      <MatchSection
+        title="Komende wedstrijden"
+        empty="Geen wedstrijden gepland."
+        matches={upcoming}
+        isAdmin={isAdmin}
+        onDelete={deleteMatch}
+      />
+      <MatchSection
+        title="Eerdere wedstrijden"
+        empty="Nog geen eerdere wedstrijden."
+        matches={past}
+        isAdmin={isAdmin}
+        onDelete={deleteMatch}
+      />
+    </main>
+  );
+}
+
+
+function MatchSection({
+  title,
+  empty,
+  matches,
+  isAdmin,
+  onDelete,
+}: {
+  title: string;
+  empty: string;
+  matches: Match[];
+  isAdmin: boolean;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <section>
+      <h2 className="mb-2 text-lg font-semibold">
+        {title} ({matches.length})
+      </h2>
+      {matches.length === 0 && (
+        <p className="text-sm text-green-900/60">{empty}</p>
+      )}
+      <ul className="space-y-2">
+        {matches.map((m) => {
+          const date = new Date(m.match_date);
+          return (
             <li
               key={m.id}
-              className="flex items-center justify-between rounded border bg-white p-2"
+              className="flex items-center gap-3 rounded-lg border bg-white p-3"
             >
-              <div>
+              <div className="w-14 shrink-0 rounded bg-green-100 py-1 text-center text-green-900">
+                <div className="text-xl font-bold leading-tight">
+                  {date.getDate()}
+                </div>
+                <div className="text-xs uppercase">
+                  {date.toLocaleDateString("nl-NL", { month: "short" })}
+                </div>
+              </div>
+              <div className="min-w-0 flex-1">
                 <Link
                   href={`/wedstrijden/${m.id}`}
-                  className="font-semibold text-green-700"
+                  className="block truncate font-semibold text-green-700"
                 >
                   {m.opponent || "Tegenstander onbekend"}
                 </Link>
-                <div className="text-sm text-green-900/60">
-                  {new Date(m.match_date).toLocaleDateString("nl-NL", {
-                    dateStyle: "full",
-                  })}
+                <div className="truncate text-sm text-green-900/60">
+                  {date.toLocaleDateString("nl-NL", { weekday: "long" })}
                   {m.location && ` · ${m.location}`}
                   {m.status === "played" && " · gespeeld"}
                 </div>
               </div>
               {isAdmin && (
-<button
-                onClick={() => deleteMatch(m.id)}
-                className="text-sm text-red-600"
-              >
-                Verwijderen
-              </button>
-)}
+                <button
+                  onClick={() => onDelete(m.id)}
+                  className="text-sm text-red-600"
+                >
+                  Verwijderen
+                </button>
+              )}
             </li>
-          ))}
-        </ul>
-      </section>
-    </main>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
