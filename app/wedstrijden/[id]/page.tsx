@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useIsAdmin } from "@/lib/useIsAdmin";
 
 type Player = { id: string; name: string; is_reserve: boolean };
 type Match = { opponent: string | null; match_date: string };
@@ -20,6 +21,7 @@ export default function WedstrijdPage() {
 function WedstrijdDetail() {
   const { id } = useParams<{ id: string }>();
   const supabase = createClient();
+  const isAdmin = useIsAdmin();
   const [match, setMatch] = useState<Match | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [available, setAvailable] = useState<Record<string, boolean>>({});
@@ -150,6 +152,7 @@ function WedstrijdDetail() {
                 <input
                   type="checkbox"
                   checked={isAvailable}
+                  disabled={!isAdmin}
                   onChange={(e) => setAvailability(p.id, e.target.checked)}
                 />
                 {p.name}
@@ -159,7 +162,7 @@ function WedstrijdDetail() {
               </label>
               <select
                 value={lineup[p.id] ?? "none"}
-                disabled={!isAvailable}
+                disabled={!isAdmin || !isAvailable}
                 onChange={(e) => setRole(p.id, e.target.value as Role)}
                 className="rounded border border-green-300 p-1 text-gray-900 disabled:opacity-40"
               >

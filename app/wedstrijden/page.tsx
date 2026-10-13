@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useIsAdmin } from "@/lib/useIsAdmin";
 
 type Match = {
   id: string;
@@ -14,6 +15,7 @@ type Match = {
 
 export default function WedstrijdenPage() {
   const supabase = createClient();
+  const isAdmin = useIsAdmin();
   const [matches, setMatches] = useState<Match[]>([]);
   const [opponent, setOpponent] = useState("");
   const [matchDate, setMatchDate] = useState("");
@@ -74,6 +76,7 @@ export default function WedstrijdenPage() {
     <main className="mx-auto max-w-xl space-y-6 p-4">
       <h1 className="text-2xl font-bold">Wedstrijden</h1>
 
+      {isAdmin && (
       <form onSubmit={addMatch} className="space-y-3 rounded-lg border bg-white p-4">
         <input
           type="text"
@@ -104,6 +107,7 @@ export default function WedstrijdenPage() {
           Aanmaken
         </button>
       </form>
+      )}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
@@ -132,12 +136,14 @@ export default function WedstrijdenPage() {
                   {m.status === "played" && " · gespeeld"}
                 </div>
               </div>
-              <button
+              {isAdmin && (
+<button
                 onClick={() => deleteMatch(m.id)}
                 className="text-sm text-red-600"
               >
                 Verwijderen
               </button>
+)}
             </li>
           ))}
         </ul>
