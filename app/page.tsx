@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useIsAdmin } from "@/lib/useIsAdmin";
 
 type Match = {
   id: string;
@@ -12,17 +13,16 @@ type Match = {
   is_home: boolean;
 };
 
-type LineupRow = {
-  is_starter: boolean;
-  players: { name: string } | null;
-};
+type Player = { id: string; name: string };
+type Role = "none" | "starter" | "reserve";
 
 export default function Home() {
   const supabase = createClient();
+  const isAdmin = useIsAdmin();
   const [loaded, setLoaded] = useState(false);
   const [match, setMatch] = useState<Match | null>(null);
-  const [starters, setStarters] = useState<string[]>([]);
-  const [reserves, setReserves] = useState<string[]>([]);
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [roles, setRoles] = useState<Record<string, Role>>({});
   const [error, setError] = useState("");
 
   async function load() {
@@ -44,26 +44,62 @@ export default function Home() {
     setMatch(next);
 
     if (next) {
-      const { data: rows, error: lineupError } = await supabase
-        .from("lineup")
-        .select("is_starter, players(name)")
-        .eq("match_id", next.id)
-        .returns<LineupRow[]>();
+      const [playersRes, lineupRes] = await Promise.all([
+        supabase
+          .from("players")
+          .select("id, name")
+          .eq("is_active", true)
+          .order("name"),
+        supabase
+          .from("lineup")
+          .select("player_id, is_starter")
+          .eq("match_id", next.id),
+      ]);
 
-      if (lineupError) {
+      if (playersRes.error || lineupRes.error) {
         setError("Opstelling laden mislukt.");
       } else {
-        const names = (starter: boolean) =>
-          (rows ?? [])
-            .filter((r) => r.is_starter === starter && r.players)
-            .map((r) => r.players!.name)
-            .sort();
-        setStarters(names(true));
-        setReserves(names(false));
+        setPlayers(playersRes.data ?? []);
+        setRoles(
+          Object.fromEntries(
+            (lineupRes.data ?? []).map((r) => [
+              r.player_id,
+              r.is_starter ? "starter" : "reserve",
+            ])
+          )
+        );
       }
     }
     setLoaded(true);
   }
+
+  async function setRole(playerId: string, role: Role) {
+    if (!match) return;
+    setError("");
+    const { error } =
+      role === "none"
+        ? await supabase
+            .from("lineup")
+            .delete()
+            .eq("match_id", match.id)
+            .eq("player_id", playerId)
+        : await supabase.from("lineup").upsert({
+            match_id: match.id,
+            player_id: playerId,
+            is_starter: role === "starter",
+          });
+
+    if (error) {
+      setError("Opstelling opslaan mislukt.");
+      return;
+    }
+    setRoles((prev) => ({ ...prev, [playerId]: role }));
+  }
+
+  const names = (role: Role) =>
+    players.filter((p) => roles[p.id] === role).map((p) => p.name);
+  const starters = names("starter");
+  const reserves = names("reserve");
 
   useEffect(() => {
     load();
@@ -137,6 +173,33 @@ export default function Home() {
                   </ul>
                 </div>
               </div>
+            )}
+
+            {isAdmin && (
+              <details className="rounded border p-2">
+                <summary className="cursor-pointer font-semibold text-green-700">
+                  Spelers toevoegen of weghalen
+                </summary>
+                <ul className="mt-2 space-y-2">
+                  {players.map((p) => (
+                    <li
+                      key={p.id}
+                      className="flex items-center justify-between gap-2"
+                    >
+                      {p.name}
+                      <select
+                        value={roles[p.id] ?? "none"}
+                        onChange={(e) => setRole(p.id, e.target.value as Role)}
+                        className="rounded border border-green-300 p-1 text-gray-900"
+                      >
+                        <option value="none">Niet opgesteld</option>
+                        <option value="starter">Speler</option>
+                        <option value="reserve">Reserve</option>
+                      </select>
+                    </li>
+                  ))}
+                </ul>
+              </details>
             )}
           </>
         )}
