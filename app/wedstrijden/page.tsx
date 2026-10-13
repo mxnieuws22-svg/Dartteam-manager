@@ -7,7 +7,8 @@ type Match = {
   id: string;
   opponent: string;
   match_date: string;
-  is_home: boolean;
+  location: string | null;
+  status: "planned" | "played";
 };
 
 export default function WedstrijdenPage() {
@@ -15,13 +16,13 @@ export default function WedstrijdenPage() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [opponent, setOpponent] = useState("");
   const [matchDate, setMatchDate] = useState("");
-  const [isHome, setIsHome] = useState(true);
+  const [location, setLocation] = useState("");
   const [error, setError] = useState("");
 
   async function loadMatches() {
     const { data, error } = await supabase
       .from("matches")
-      .select("id, opponent, match_date, is_home")
+      .select("id, opponent, match_date, location, status")
       .order("match_date");
 
     if (error) {
@@ -42,8 +43,8 @@ export default function WedstrijdenPage() {
 
     const { error } = await supabase.from("matches").insert({
       opponent: opponent.trim(),
-      match_date: new Date(matchDate).toISOString(),
-      is_home: isHome,
+      match_date: matchDate,
+      location: location.trim() || null,
     });
 
     if (error) {
@@ -52,7 +53,7 @@ export default function WedstrijdenPage() {
     }
     setOpponent("");
     setMatchDate("");
-    setIsHome(true);
+    setLocation("");
     loadMatches();
   }
 
@@ -82,20 +83,19 @@ export default function WedstrijdenPage() {
           className="w-full rounded border border-gray-300 p-2 text-gray-900"
         />
         <input
-          type="datetime-local"
+          type="date"
           value={matchDate}
           onChange={(e) => setMatchDate(e.target.value)}
           required
           className="w-full rounded border border-gray-300 p-2 text-gray-900"
         />
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={isHome}
-            onChange={(e) => setIsHome(e.target.checked)}
-          />
-          Thuiswedstrijd
-        </label>
+        <input
+          type="text"
+          placeholder="Locatie (optioneel)"
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          className="w-full rounded border border-gray-300 p-2 text-gray-900"
+        />
         <button
           type="submit"
           className="rounded bg-blue-600 px-4 py-2 font-semibold text-white"
@@ -118,13 +118,14 @@ export default function WedstrijdenPage() {
             >
               <div>
                 <div className="font-semibold">
-                  {m.is_home ? "Thuis" : "Uit"} tegen {m.opponent}
+                  {m.opponent || "Tegenstander onbekend"}
                 </div>
                 <div className="text-sm text-gray-500">
-                  {new Date(m.match_date).toLocaleString("nl-NL", {
+                  {new Date(m.match_date).toLocaleDateString("nl-NL", {
                     dateStyle: "full",
-                    timeStyle: "short",
                   })}
+                  {m.location && ` · ${m.location}`}
+                  {m.status === "played" && " · gespeeld"}
                 </div>
               </div>
               <button
