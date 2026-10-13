@@ -7,7 +7,12 @@ import { createClient } from "@/lib/supabase/client";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 
 type Player = { id: string; name: string; is_reserve: boolean };
-type Match = { opponent: string | null; match_date: string };
+type Match = {
+  opponent: string | null;
+  match_date: string;
+  is_home: boolean;
+  location: string | null;
+};
 type Role = "none" | "starter" | "reserve";
 
 export default function WedstrijdPage() {
@@ -32,7 +37,7 @@ function WedstrijdDetail() {
     const [m, p, a, l] = await Promise.all([
       supabase
         .from("matches")
-        .select("opponent, match_date")
+        .select("opponent, match_date, is_home, location")
         .eq("id", id)
         .single(),
       supabase
@@ -130,6 +135,11 @@ function WedstrijdDetail() {
             {new Date(match.match_date).toLocaleDateString("nl-NL", {
               dateStyle: "full",
             })}
+            {" · "}
+            <span className="font-semibold">
+              {match.is_home ? "Thuiswedstrijd" : "Uitwedstrijd"}
+            </span>
+            {match.location && ` · ${match.location}`}
           </p>
         )}
       </div>

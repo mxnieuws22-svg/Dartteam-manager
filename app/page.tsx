@@ -9,6 +9,7 @@ type Match = {
   opponent: string | null;
   match_date: string;
   location: string | null;
+  is_home: boolean;
 };
 
 type LineupRow = {
@@ -28,7 +29,7 @@ export default function Home() {
     const today = new Date().toISOString().slice(0, 10);
     const { data: next, error: matchError } = await supabase
       .from("matches")
-      .select("id, opponent, match_date, location")
+      .select("id, opponent, match_date, location, is_home")
       .eq("status", "planned")
       .gte("match_date", today)
       .order("match_date")
@@ -97,6 +98,10 @@ export default function Home() {
                 {new Date(match.match_date).toLocaleDateString("nl-NL", {
                   dateStyle: "full",
                 })}
+                {" · "}
+                <span className="font-semibold">
+                  {match.is_home ? "Thuiswedstrijd" : "Uitwedstrijd"}
+                </span>
                 {match.location && ` · ${match.location}`}
               </p>
             </div>
