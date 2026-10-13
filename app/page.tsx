@@ -71,7 +71,7 @@ export default function Home() {
 
   return (
     <main className="mx-auto max-w-2xl space-y-6 p-4">
-      <h1 className="text-2xl font-bold">Dartteam</h1>
+      <h1 className="text-2xl font-bold">Darten met je Hart</h1>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 

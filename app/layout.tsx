@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Dartteam",
-  description: "Spelers, wedstrijden en opstelling van het dartteam",
+  title: "Darten met je Hart",
+  description: "Spelers, wedstrijden en opstelling van Darten met je Hart",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
