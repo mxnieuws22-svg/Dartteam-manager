@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -117,9 +118,12 @@ export default function WedstrijdenPage() {
               className="flex items-center justify-between rounded border p-2"
             >
               <div>
-                <div className="font-semibold">
+                <Link
+                  href={`/wedstrijden/${m.id}`}
+                  className="font-semibold text-blue-600"
+                >
                   {m.opponent || "Tegenstander onbekend"}
-                </div>
+                </Link>
                 <div className="text-sm text-gray-500">
                   {new Date(m.match_date).toLocaleDateString("nl-NL", {
                     dateStyle: "full",

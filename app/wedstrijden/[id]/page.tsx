@@ -1,0 +1,168 @@
+"use client";
+
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+
+type Player = { id: string; name: string; is_reserve: boolean };
+type Match = { opponent: string | null; match_date: string };
+type Role = "none" | "starter" | "reserve";
+
+export default function WedstrijdPage() {
+  const { id } = useParams<{ id: string }>();
+  const supabase = createClient();
+  const [match, setMatch] = useState<Match | null>(null);
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [available, setAvailable] = useState<Record<string, boolean>>({});
+  const [lineup, setLineup] = useState<Record<string, Role>>({});
+  const [error, setError] = useState("");
+
+  async function load() {
+    const [m, p, a, l] = await Promise.all([
+      supabase
+        .from("matches")
+        .select("opponent, match_date")
+        .eq("id", id)
+        .single(),
+      supabase
+        .from("players")
+        .select("id, name, is_reserve")
+        .eq("is_active", true)
+        .order("is_reserve")
+        .order("name"),
+      supabase
+        .from("availability")
+        .select("player_id, is_available")
+        .eq("match_id", id),
+      supabase
+        .from("lineup")
+        .select("player_id, is_starter")
+        .eq("match_id", id),
+    ]);
+
+    if (m.error || p.error || a.error || l.error) {
+      setError("Gegevens laden mislukt.");
+      return;
+    }
+    setMatch(m.data);
+    setPlayers(p.data ?? []);
+    setAvailable(
+      Object.fromEntries((a.data ?? []).map((r) => [r.player_id, r.is_available]))
+    );
+    setLineup(
+      Object.fromEntries(
+        (l.data ?? []).map((r) => [
+          r.player_id,
+          r.is_starter ? "starter" : "reserve",
+        ])
+      )
+    );
+  }
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  async function setAvailability(playerId: string, isAvailable: boolean) {
+    setError("");
+    const { error } = await supabase
+      .from("availability")
+      .upsert({ match_id: id, player_id: playerId, is_available: isAvailable });
+
+    if (error) {
+      setError("Beschikbaarheid opslaan mislukt.");
+      return;
+    }
+    if (!isAvailable && lineup[playerId]) {
+      await setRole(playerId, "none");
+    }
+    setAvailable((prev) => ({ ...prev, [playerId]: isAvailable }));
+  }
+
+  async function setRole(playerId: string, role: Role) {
+    setError("");
+    const { error } =
+      role === "none"
+        ? await supabase
+            .from("lineup")
+            .delete()
+            .eq("match_id", id)
+            .eq("player_id", playerId)
+        : await supabase.from("lineup").upsert({
+            match_id: id,
+            player_id: playerId,
+            is_starter: role === "starter",
+          });
+
+    if (error) {
+      setError("Opstelling opslaan mislukt.");
+      return;
+    }
+    setLineup((prev) => ({ ...prev, [playerId]: role }));
+  }
+
+  const starters = players.filter((p) => lineup[p.id] === "starter").length;
+  const reserves = players.filter((p) => lineup[p.id] === "reserve").length;
+
+  return (
+    <main className="mx-auto max-w-xl space-y-6 p-4">
+      <Link href="/wedstrijden" className="text-sm text-blue-600">
+        ← Wedstrijden
+      </Link>
+      <div>
+        <h1 className="text-2xl font-bold">
+          {match?.opponent || "Wedstrijd"}
+        </h1>
+        {match && (
+          <p className="text-sm text-gray-500">
+            {new Date(match.match_date).toLocaleDateString("nl-NL", {
+              dateStyle: "full",
+            })}
+          </p>
+        )}
+      </div>
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
+
+      <p className="text-sm">
+        Opstelling: {starters} basis, {reserves} reserve
+      </p>
+
+      <ul className="space-y-2">
+        {players.map((p) => {
+          const isAvailable = available[p.id] ?? false;
+          return (
+            <li
+              key={p.id}
+              className="flex items-center justify-between gap-2 rounded border p-2"
+            >
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={isAvailable}
+                  onChange={(e) => setAvailability(p.id, e.target.checked)}
+                />
+                {p.name}
+                {p.is_reserve && (
+                  <span className="text-xs text-gray-500">(reserve)</span>
+                )}
+              </label>
+              <select
+                value={lineup[p.id] ?? "none"}
+                disabled={!isAvailable}
+                onChange={(e) => setRole(p.id, e.target.value as Role)}
+                className="rounded border border-gray-300 p-1 text-gray-900 disabled:opacity-40"
+              >
+                <option value="none">Niet opgesteld</option>
+                <option value="starter">Basis</option>
+                <option value="reserve">Reserve</option>
+              </select>
+            </li>
+          );
+        })}
+      </ul>
+    </main>
+  );
+}
