@@ -16,6 +16,12 @@ export default function Home() {
         >
           Spelers
         </Link>
+        <Link
+          href="/wedstrijden"
+          className="block rounded-lg border p-4 font-semibold"
+        >
+          Wedstrijden
+        </Link>
       </nav>
     </main>
   );
