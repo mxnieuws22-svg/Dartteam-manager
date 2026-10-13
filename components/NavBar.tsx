@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import AuthButton from "@/components/AuthButton";
+import { useIsAdmin } from "@/lib/useIsAdmin";
 
 const links = [
   { href: "/", label: "Home" },
@@ -12,6 +13,9 @@ const links = [
 
 export default function NavBar() {
   const pathname = usePathname();
+  const isAdmin = useIsAdmin();
+
+  if (!isAdmin) return null;
 
   return (
     <header className="border-b bg-white">
