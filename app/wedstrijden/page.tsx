@@ -10,6 +10,7 @@ type Match = {
   opponent: string;
   match_date: string;
   location: string | null;
+  is_home: boolean;
   status: "planned" | "played";
 };
 
@@ -20,13 +21,14 @@ export default function WedstrijdenPage() {
   const [opponent, setOpponent] = useState("");
   const [matchDate, setMatchDate] = useState("");
   const [location, setLocation] = useState("");
+  const [isHome, setIsHome] = useState(true);
   const [error, setError] = useState("");
   const [today, setToday] = useState("");
 
   async function loadMatches() {
     const { data, error } = await supabase
       .from("matches")
-      .select("id, opponent, match_date, location, status")
+      .select("id, opponent, match_date, location, is_home, status")
       .order("match_date");
 
     if (error) {
@@ -50,6 +52,7 @@ export default function WedstrijdenPage() {
       opponent: opponent.trim(),
       match_date: matchDate,
       location: location.trim() || null,
+      is_home: isHome,
     });
 
     if (error) {
@@ -59,6 +62,7 @@ export default function WedstrijdenPage() {
     setOpponent("");
     setMatchDate("");
     setLocation("");
+    setIsHome(true);
     loadMatches();
   }
 
@@ -102,6 +106,14 @@ export default function WedstrijdenPage() {
           required
           className="w-full rounded border border-green-300 p-2 text-gray-900"
         />
+        <select
+          value={isHome ? "home" : "away"}
+          onChange={(e) => setIsHome(e.target.value === "home")}
+          className="w-full rounded border border-green-300 p-2 text-gray-900"
+        >
+          <option value="home">Thuiswedstrijd</option>
+          <option value="away">Uitwedstrijd</option>
+        </select>
         <input
           type="text"
           placeholder="Locatie (optioneel)"
@@ -185,6 +197,10 @@ function MatchSection({
                 </Link>
                 <div className="truncate text-sm text-green-900/60">
                   {date.toLocaleDateString("nl-NL", { weekday: "long" })}
+                  {" · "}
+                  <span className="font-semibold text-green-900">
+                    {m.is_home ? "Thuis" : "Uit"}
+                  </span>
                   {m.location && ` · ${m.location}`}
                   {m.status === "played" && " · gespeeld"}
                 </div>
