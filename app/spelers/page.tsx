@@ -71,14 +71,14 @@ export default function SpelersPage() {
     <main className="mx-auto max-w-xl space-y-6 p-4">
       <h1 className="text-2xl font-bold">Spelers</h1>
 
-      <form onSubmit={addPlayer} className="space-y-3 rounded-lg border p-4">
+      <form onSubmit={addPlayer} className="space-y-3 rounded-lg border bg-white p-4">
         <input
           type="text"
           placeholder="Naam van de speler"
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
-          className="w-full rounded border border-gray-300 p-2 text-gray-900"
+          className="w-full rounded border border-green-300 p-2 text-gray-900"
         />
         <label className="flex items-center gap-2">
           <input
@@ -90,7 +90,7 @@ export default function SpelersPage() {
         </label>
         <button
           type="submit"
-          className="rounded bg-blue-600 px-4 py-2 font-semibold text-white"
+          className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
         >
           Toevoegen
         </button>
@@ -106,7 +106,7 @@ export default function SpelersPage() {
           {starters.map((p) => (
             <li
               key={p.id}
-              className="flex items-center justify-between rounded border p-2"
+              className="flex items-center justify-between rounded border bg-white p-2"
             >
               {p.name}
               <button
@@ -128,7 +128,7 @@ export default function SpelersPage() {
           {reserves.map((p) => (
             <li
               key={p.id}
-              className="flex items-center justify-between rounded border p-2"
+              className="flex items-center justify-between rounded border bg-white p-2"
             >
               {p.name}
               <button

@@ -74,32 +74,32 @@ export default function WedstrijdenPage() {
     <main className="mx-auto max-w-xl space-y-6 p-4">
       <h1 className="text-2xl font-bold">Wedstrijden</h1>
 
-      <form onSubmit={addMatch} className="space-y-3 rounded-lg border p-4">
+      <form onSubmit={addMatch} className="space-y-3 rounded-lg border bg-white p-4">
         <input
           type="text"
           placeholder="Tegenstander"
           value={opponent}
           onChange={(e) => setOpponent(e.target.value)}
           required
-          className="w-full rounded border border-gray-300 p-2 text-gray-900"
+          className="w-full rounded border border-green-300 p-2 text-gray-900"
         />
         <input
           type="date"
           value={matchDate}
           onChange={(e) => setMatchDate(e.target.value)}
           required
-          className="w-full rounded border border-gray-300 p-2 text-gray-900"
+          className="w-full rounded border border-green-300 p-2 text-gray-900"
         />
         <input
           type="text"
           placeholder="Locatie (optioneel)"
           value={location}
           onChange={(e) => setLocation(e.target.value)}
-          className="w-full rounded border border-gray-300 p-2 text-gray-900"
+          className="w-full rounded border border-green-300 p-2 text-gray-900"
         />
         <button
           type="submit"
-          className="rounded bg-blue-600 px-4 py-2 font-semibold text-white"
+          className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
         >
           Aanmaken
         </button>
@@ -115,16 +115,16 @@ export default function WedstrijdenPage() {
           {matches.map((m) => (
             <li
               key={m.id}
-              className="flex items-center justify-between rounded border p-2"
+              className="flex items-center justify-between rounded border bg-white p-2"
             >
               <div>
                 <Link
                   href={`/wedstrijden/${m.id}`}
-                  className="font-semibold text-blue-600"
+                  className="font-semibold text-green-700"
                 >
                   {m.opponent || "Tegenstander onbekend"}
                 </Link>
-                <div className="text-sm text-gray-500">
+                <div className="text-sm text-green-900/60">
                   {new Date(m.match_date).toLocaleDateString("nl-NL", {
                     dateStyle: "full",
                   })}

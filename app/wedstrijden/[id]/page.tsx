@@ -108,7 +108,7 @@ export default function WedstrijdPage() {
 
   return (
     <main className="mx-auto max-w-xl space-y-6 p-4">
-      <Link href="/wedstrijden" className="text-sm text-blue-600">
+      <Link href="/wedstrijden" className="text-sm text-green-700">
         ← Wedstrijden
       </Link>
       <div>
@@ -116,7 +116,7 @@ export default function WedstrijdPage() {
           {match?.opponent || "Wedstrijd"}
         </h1>
         {match && (
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-green-900/60">
             {new Date(match.match_date).toLocaleDateString("nl-NL", {
               dateStyle: "full",
             })}
@@ -136,7 +136,7 @@ export default function WedstrijdPage() {
           return (
             <li
               key={p.id}
-              className="flex items-center justify-between gap-2 rounded border p-2"
+              className="flex items-center justify-between gap-2 rounded border bg-white p-2"
             >
               <label className="flex items-center gap-2">
                 <input
@@ -146,14 +146,14 @@ export default function WedstrijdPage() {
                 />
                 {p.name}
                 {p.is_reserve && (
-                  <span className="text-xs text-gray-500">(reserve)</span>
+                  <span className="text-xs text-green-900/60">(reserve)</span>
                 )}
               </label>
               <select
                 value={lineup[p.id] ?? "none"}
                 disabled={!isAvailable}
                 onChange={(e) => setRole(p.id, e.target.value as Role)}
-                className="rounded border border-gray-300 p-1 text-gray-900 disabled:opacity-40"
+                className="rounded border border-green-300 p-1 text-gray-900 disabled:opacity-40"
               >
                 <option value="none">Niet opgesteld</option>
                 <option value="starter">Basis</option>
