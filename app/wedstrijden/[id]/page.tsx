@@ -90,9 +90,6 @@ function WedstrijdDetail() {
       setError("Beschikbaarheid opslaan mislukt.");
       return;
     }
-    if (!isAvailable && lineup[playerId]) {
-      await setRole(playerId, "none");
-    }
     setAvailable((prev) => ({ ...prev, [playerId]: isAvailable }));
   }
 
@@ -172,9 +169,9 @@ function WedstrijdDetail() {
               </label>
               <select
                 value={lineup[p.id] ?? "none"}
-                disabled={!isAdmin || !isAvailable}
+                disabled={!isAdmin}
                 onChange={(e) => setRole(p.id, e.target.value as Role)}
-                className="rounded border border-green-300 p-1 text-gray-900 disabled:opacity-40"
+                className="rounded border border-green-300 p-1 text-gray-900"
               >
                 <option value="none">Niet opgesteld</option>
                 <option value="starter">Basis</option>
