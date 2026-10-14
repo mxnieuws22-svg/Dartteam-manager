@@ -71,18 +71,20 @@ function WedstrijdDetail() {
       ...(l.data ?? []).map((r) => r.player_id),
     ]);
     setPlayers(
-      (p.data ?? []).filter((pl) => pl.is_active || linked.has(pl.id))
+      (p.data ?? []).filter((pl) => pl.is_active || linked.has(pl.id)),
     );
     setAvailable(
-      Object.fromEntries((a.data ?? []).map((r) => [r.player_id, r.is_available]))
+      Object.fromEntries(
+        (a.data ?? []).map((r) => [r.player_id, r.is_available]),
+      ),
     );
     setLineup(
       Object.fromEntries(
         (l.data ?? []).map((r) => [
           r.player_id,
           r.is_starter ? "starter" : "reserve",
-        ])
-      )
+        ]),
+      ),
     );
   }
 
@@ -126,8 +128,8 @@ function WedstrijdDetail() {
     setLineup((prev) => ({ ...prev, [playerId]: role }));
   }
 
-  const starters = players.filter((p) => lineup[p.id] === "starter").length;
-  const reserves = players.filter((p) => lineup[p.id] === "reserve").length;
+  const starters = players.filter((p) => lineup[p.id] === "starter");
+  const reserves = players.filter((p) => lineup[p.id] === "reserve");
 
   return (
     <main className="mx-auto max-w-2xl space-y-6 p-4">
@@ -135,9 +137,7 @@ function WedstrijdDetail() {
         ← Wedstrijden
       </Link>
       <div>
-        <h1 className="text-2xl font-bold">
-          {match?.opponent || "Wedstrijd"}
-        </h1>
+        <h1 className="text-2xl font-bold">{match?.opponent || "Wedstrijd"}</h1>
         {match && (
           <p className="text-sm text-green-900/60">
             {new Date(match.match_date).toLocaleDateString("nl-NL", {
@@ -154,49 +154,83 @@ function WedstrijdDetail() {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      <p className="text-sm">
-        Opstelling: {starters} basis, {reserves} reserve
-      </p>
+      {starters.length + reserves.length === 0 ? (
+        <p className="text-green-900/70">De opstelling is nog niet bepaald.</p>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <h2 className="mb-1 font-semibold">Opstelling</h2>
+            <ul className="space-y-1">
+              {starters.map((p) => (
+                <li key={p.id} className="rounded bg-green-100 px-2 py-1">
+                  {p.name}
+                </li>
+              ))}
+            </ul>
+          </div>
+          {reserves.length > 0 && (
+            <div>
+              <h2 className="mb-1 font-semibold">Reserve</h2>
+              <ul className="space-y-1">
+                {reserves.map((p) => (
+                  <li key={p.id} className="rounded border px-2 py-1">
+                    {p.name}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
 
-      <ul className="space-y-2">
-        {players.map((p) => {
-          const isAvailable = available[p.id] ?? false;
-          return (
-            <li
-              key={p.id}
-              className="flex items-center justify-between gap-2 rounded border bg-white p-2"
-            >
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={isAvailable}
-                  disabled={!isAdmin}
-                  onChange={(e) => setAvailability(p.id, e.target.checked)}
-                />
-                {p.name}
-                {!p.is_active && (
-                  <span className="text-xs text-green-900/60">
-                    (niet meer in team)
-                  </span>
-                )}
-                {p.is_reserve && (
-                  <span className="text-xs text-green-900/60">(reserve)</span>
-                )}
-              </label>
-              <select
-                value={lineup[p.id] ?? "none"}
-                disabled={!isAdmin}
-                onChange={(e) => setRole(p.id, e.target.value as Role)}
-                className="rounded border border-green-300 p-1 text-gray-900"
-              >
-                <option value="none">Niet opgesteld</option>
-                <option value="starter">Basis</option>
-                <option value="reserve">Reserve</option>
-              </select>
-            </li>
-          );
-        })}
-      </ul>
+      {isAdmin && (
+        <details className="rounded border bg-white p-2">
+          <summary className="cursor-pointer font-semibold text-green-700">
+            Opstelling aanpassen
+          </summary>
+          <ul className="mt-2 space-y-2">
+            {players.map((p) => {
+              const isAvailable = available[p.id] ?? false;
+              return (
+                <li
+                  key={p.id}
+                  className="flex items-center justify-between gap-2 rounded border bg-white p-2"
+                >
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={isAvailable}
+                      disabled={!isAdmin}
+                      onChange={(e) => setAvailability(p.id, e.target.checked)}
+                    />
+                    {p.name}
+                    {!p.is_active && (
+                      <span className="text-xs text-green-900/60">
+                        (niet meer in team)
+                      </span>
+                    )}
+                    {p.is_reserve && (
+                      <span className="text-xs text-green-900/60">
+                        (reserve)
+                      </span>
+                    )}
+                  </label>
+                  <select
+                    value={lineup[p.id] ?? "none"}
+                    disabled={!isAdmin}
+                    onChange={(e) => setRole(p.id, e.target.value as Role)}
+                    className="rounded border border-green-300 p-1 text-gray-900"
+                  >
+                    <option value="none">Niet opgesteld</option>
+                    <option value="starter">Basis</option>
+                    <option value="reserve">Reserve</option>
+                  </select>
+                </li>
+              );
+            })}
+          </ul>
+        </details>
+      )}
     </main>
   );
 }
