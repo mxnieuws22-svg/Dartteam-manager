@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-type Row = { name: string; starts: number };
+type Row = { name: string; starts: number; active: boolean };
 
 type LineupRow = {
   player_id: string;
@@ -20,7 +20,7 @@ export default function StatistiekenPage() {
   async function load() {
     const today = new Date().toISOString().slice(0, 10);
     const [playersRes, lineupRes, matchesRes] = await Promise.all([
-      supabase.from("players").select("id, name").eq("is_active", true),
+      supabase.from("players").select("id, name, is_active"),
       supabase
         .from("lineup")
         .select("player_id, matches(match_date, status)")
@@ -49,7 +49,13 @@ export default function StatistiekenPage() {
     setMatchCount((matchesRes.data ?? []).filter(counted).length);
     setRows(
       (playersRes.data ?? [])
-        .map((p) => ({ name: p.name, starts: starts[p.id] ?? 0 }))
+        .map((p) => ({
+          name: p.name,
+          starts: starts[p.id] ?? 0,
+          active: p.is_active,
+        }))
+        // Spelers die het team hebben verlaten blijven staan zolang ze gespeeld hebben.
+        .filter((r) => r.active || r.starts > 0)
         .sort((a, b) => b.starts - a.starts || a.name.localeCompare(b.name))
     );
     setLoaded(true);
@@ -81,6 +87,11 @@ export default function StatistiekenPage() {
           >
             <span className="w-32 shrink-0 truncate font-semibold">
               {r.name}
+              {!r.active && (
+                <span className="block text-xs font-normal text-green-900/60">
+                  niet meer in team
+                </span>
+              )}
             </span>
             <div className="h-3 flex-1 overflow-hidden rounded bg-green-100">
               <div
