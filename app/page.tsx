@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -108,7 +109,15 @@ export default function Home() {
 
   return (
     <main className="mx-auto max-w-2xl space-y-6 p-4">
-      <h1 className="text-2xl font-bold">Darten met je Hart</h1>
+      <h1 className="sr-only">Darten met je Hart - &apos;t Berghje</h1>
+      <Image
+        src="/logo.png"
+        alt="Darten met je Hart - 't Berghje"
+        width={1152}
+        height={768}
+        priority
+        className="w-full rounded-lg"
+      />
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
