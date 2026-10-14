@@ -9,6 +9,7 @@ const links = [
   { href: "/", label: "Home" },
   { href: "/spelers", label: "Spelers" },
   { href: "/wedstrijden", label: "Wedstrijden" },
+  { href: "/statistieken", label: "Statistieken" },
 ];
 
 export default function NavBar() {
