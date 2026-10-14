@@ -6,7 +6,12 @@ import { Suspense, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 
-type Player = { id: string; name: string; is_reserve: boolean };
+type Player = {
+  id: string;
+  name: string;
+  is_reserve: boolean;
+  is_active: boolean;
+};
 type Match = {
   opponent: string | null;
   match_date: string;
@@ -42,8 +47,7 @@ function WedstrijdDetail() {
         .single(),
       supabase
         .from("players")
-        .select("id, name, is_reserve")
-        .eq("is_active", true)
+        .select("id, name, is_reserve, is_active")
         .order("is_reserve")
         .order("name"),
       supabase
@@ -61,7 +65,14 @@ function WedstrijdDetail() {
       return;
     }
     setMatch(m.data);
-    setPlayers(p.data ?? []);
+    // Spelers die het team hebben verlaten blijven alleen zichtbaar als ze bij deze wedstrijd horen.
+    const linked = new Set([
+      ...(a.data ?? []).map((r) => r.player_id),
+      ...(l.data ?? []).map((r) => r.player_id),
+    ]);
+    setPlayers(
+      (p.data ?? []).filter((pl) => pl.is_active || linked.has(pl.id))
+    );
     setAvailable(
       Object.fromEntries((a.data ?? []).map((r) => [r.player_id, r.is_available]))
     );
@@ -163,6 +174,11 @@ function WedstrijdDetail() {
                   onChange={(e) => setAvailability(p.id, e.target.checked)}
                 />
                 {p.name}
+                {!p.is_active && (
+                  <span className="text-xs text-green-900/60">
+                    (niet meer in team)
+                  </span>
+                )}
                 {p.is_reserve && (
                   <span className="text-xs text-green-900/60">(reserve)</span>
                 )}
