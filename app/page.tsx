@@ -16,6 +16,13 @@ type Match = {
 
 type Player = { id: string; name: string };
 type Role = "none" | "starter" | "reserve";
+type Played = { starters: string[]; reserves: string[] };
+
+type PlayedRow = {
+  match_id: string;
+  is_starter: boolean;
+  players: { name: string } | null;
+};
 
 export default function Home() {
   const supabase = createClient();
@@ -24,6 +31,7 @@ export default function Home() {
   const [match, setMatch] = useState<Match | null>(null);
   const [later, setLater] = useState<Match[]>([]);
   const [earlier, setEarlier] = useState<Match[]>([]);
+  const [played, setPlayed] = useState<Record<string, Played>>({});
   const [players, setPlayers] = useState<Player[]>([]);
   const [roles, setRoles] = useState<Record<string, Role>>({});
   const [error, setError] = useState("");
@@ -41,17 +49,39 @@ export default function Home() {
       return;
     }
     const upcoming = (all ?? []).filter(
-      (m) => m.status === "planned" && m.match_date >= today
+      (m) => m.status === "planned" && m.match_date >= today,
     );
     const next = upcoming[0] ?? null;
     setMatch(next);
     setLater(upcoming.slice(1, 4));
-    setEarlier(
-      (all ?? [])
-        .filter((m) => !upcoming.includes(m))
-        .sort((x, y) => y.match_date.localeCompare(x.match_date))
-        .slice(0, 3)
-    );
+    const recent = (all ?? [])
+      .filter((m) => !upcoming.includes(m))
+      .sort((x, y) => y.match_date.localeCompare(x.match_date))
+      .slice(0, 3);
+    setEarlier(recent);
+
+    if (recent.length > 0) {
+      const { data: rows } = await supabase
+        .from("lineup")
+        .select("match_id, is_starter, players(name)")
+        .in(
+          "match_id",
+          recent.map((m) => m.id),
+        )
+        .returns<PlayedRow[]>();
+
+      const byMatch: Record<string, Played> = {};
+      for (const r of rows ?? []) {
+        if (!r.players) continue;
+        const entry = (byMatch[r.match_id] ??= { starters: [], reserves: [] });
+        (r.is_starter ? entry.starters : entry.reserves).push(r.players.name);
+      }
+      for (const e of Object.values(byMatch)) {
+        e.starters.sort();
+        e.reserves.sort();
+      }
+      setPlayed(byMatch);
+    }
 
     if (next) {
       const [playersRes, lineupRes] = await Promise.all([
@@ -75,8 +105,8 @@ export default function Home() {
             (lineupRes.data ?? []).map((r) => [
               r.player_id,
               r.is_starter ? "starter" : "reserve",
-            ])
-          )
+            ]),
+          ),
         );
       }
     }
@@ -167,9 +197,7 @@ export default function Home() {
             ) : (
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <h3 className="mb-1 font-semibold">
-                    Opstelling
-                  </h3>
+                  <h3 className="mb-1 font-semibold">Opstelling</h3>
                   <ul className="space-y-1">
                     {starters.map((n) => (
                       <li key={n} className="rounded bg-green-100 px-2 py-1">
@@ -179,9 +207,7 @@ export default function Home() {
                   </ul>
                 </div>
                 <div>
-                  <h3 className="mb-1 font-semibold">
-                    Reserve
-                  </h3>
+                  <h3 className="mb-1 font-semibold">Reserve</h3>
                   <ul className="space-y-1">
                     {reserves.map((n) => (
                       <li key={n} className="rounded border px-2 py-1">
@@ -224,7 +250,11 @@ export default function Home() {
       </section>
 
       <MatchList title="Hierna" matches={later} />
-      <MatchList title="Laatste wedstrijden" matches={earlier} />
+      <MatchList
+        title="Laatste wedstrijden"
+        matches={earlier}
+        played={played}
+      />
 
       <Link
         href="/statistieken"
@@ -236,8 +266,15 @@ export default function Home() {
   );
 }
 
-
-function MatchList({ title, matches }: { title: string; matches: Match[] }) {
+function MatchList({
+  title,
+  matches,
+  played,
+}: {
+  title: string;
+  matches: Match[];
+  played?: Record<string, Played>;
+}) {
   if (matches.length === 0) return null;
 
   return (
@@ -246,29 +283,52 @@ function MatchList({ title, matches }: { title: string; matches: Match[] }) {
       <ul className="space-y-2">
         {matches.map((m) => {
           const date = new Date(m.match_date);
+          const lineup = played?.[m.id];
           return (
             <li key={m.id}>
               <Link
                 href={`/wedstrijden/${m.id}`}
-                className="flex items-center gap-3 rounded-lg border bg-white p-3"
+                className="block space-y-3 rounded-lg border bg-white p-3"
               >
-                <div className="w-14 shrink-0 rounded bg-green-100 py-1 text-center text-green-900">
-                  <div className="text-xl font-bold leading-tight">
-                    {date.getDate()}
+                <div className="flex items-center gap-3">
+                  <div className="w-14 shrink-0 rounded bg-green-100 py-1 text-center text-green-900">
+                    <div className="text-xl font-bold leading-tight">
+                      {date.getDate()}
+                    </div>
+                    <div className="text-xs uppercase">
+                      {date.toLocaleDateString("nl-NL", { month: "short" })}
+                    </div>
                   </div>
-                  <div className="text-xs uppercase">
-                    {date.toLocaleDateString("nl-NL", { month: "short" })}
+                  <div className="min-w-0">
+                    <div className="truncate font-semibold text-green-700">
+                      {m.opponent || "Tegenstander onbekend"}
+                    </div>
+                    <div className="truncate text-sm text-green-900/60">
+                      {m.is_home ? "Thuis" : "Uit"}
+                      {m.location && ` · ${m.location}`}
+                    </div>
                   </div>
                 </div>
-                <div className="min-w-0">
-                  <div className="truncate font-semibold text-green-700">
-                    {m.opponent || "Tegenstander onbekend"}
+                {lineup && (
+                  <div className="flex flex-wrap gap-1.5 border-t pt-3">
+                    {lineup.starters.map((n) => (
+                      <span
+                        key={n}
+                        className="rounded-full bg-green-100 px-2.5 py-1 text-sm font-medium text-green-900"
+                      >
+                        {n}
+                      </span>
+                    ))}
+                    {lineup.reserves.map((n) => (
+                      <span
+                        key={n}
+                        className="rounded-full border px-2.5 py-1 text-sm text-green-900/70"
+                      >
+                        {n} (reserve)
+                      </span>
+                    ))}
                   </div>
-                  <div className="truncate text-sm text-green-900/60">
-                    {m.is_home ? "Thuis" : "Uit"}
-                    {m.location && ` · ${m.location}`}
-                  </div>
-                </div>
+                )}
               </Link>
             </li>
           );
