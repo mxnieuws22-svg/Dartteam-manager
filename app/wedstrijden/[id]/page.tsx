@@ -41,6 +41,10 @@ function WedstrijdDetail() {
   const [lineup, setLineup] = useState<Record<string, Role>>({});
   const [scoreFor, setScoreFor] = useState("");
   const [scoreAgainst, setScoreAgainst] = useState("");
+  const [editOpponent, setEditOpponent] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [editIsHome, setEditIsHome] = useState(true);
+  const [editLocation, setEditLocation] = useState("");
   const [error, setError] = useState("");
 
   async function load() {
@@ -74,6 +78,10 @@ function WedstrijdDetail() {
     setMatch(m.data);
     setScoreFor(m.data.score_for?.toString() ?? "");
     setScoreAgainst(m.data.score_against?.toString() ?? "");
+    setEditOpponent(m.data.opponent ?? "");
+    setEditDate(m.data.match_date);
+    setEditIsHome(m.data.is_home);
+    setEditLocation(m.data.location ?? "");
     // Spelers die het team hebben verlaten blijven alleen zichtbaar als ze bij deze wedstrijd horen.
     const linked = new Set([
       ...(a.data ?? []).map((r) => r.player_id),
@@ -113,6 +121,29 @@ function WedstrijdDetail() {
       return;
     }
     setAvailable((prev) => ({ ...prev, [playerId]: isAvailable }));
+  }
+
+  async function saveMatch(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+
+    const update = {
+      opponent: editOpponent.trim(),
+      match_date: editDate,
+      is_home: editIsHome,
+      location: editLocation.trim() || null,
+    };
+
+    const { error } = await supabase
+      .from("matches")
+      .update(update)
+      .eq("id", id);
+
+    if (error) {
+      setError("Wedstrijd opslaan mislukt.");
+      return;
+    }
+    setMatch((prev) => (prev ? { ...prev, ...update } : prev));
   }
 
   async function saveResult(e: React.FormEvent) {
@@ -269,6 +300,52 @@ function WedstrijdDetail() {
             </button>
           </div>
         </form>
+      )}
+
+      {isAdmin && (
+        <details className="rounded border bg-white p-2">
+          <summary className="cursor-pointer font-semibold text-green-700">
+            Wedstrijd bewerken
+          </summary>
+          <form onSubmit={saveMatch} className="mt-2 space-y-3">
+            <input
+              type="text"
+              placeholder="Tegenstander"
+              value={editOpponent}
+              onChange={(e) => setEditOpponent(e.target.value)}
+              required
+              className="w-full rounded border border-green-300 p-2 text-gray-900"
+            />
+            <input
+              type="date"
+              value={editDate}
+              onChange={(e) => setEditDate(e.target.value)}
+              required
+              className="w-full rounded border border-green-300 p-2 text-gray-900"
+            />
+            <select
+              value={editIsHome ? "home" : "away"}
+              onChange={(e) => setEditIsHome(e.target.value === "home")}
+              className="w-full rounded border border-green-300 p-2 text-gray-900"
+            >
+              <option value="home">Thuiswedstrijd</option>
+              <option value="away">Uitwedstrijd</option>
+            </select>
+            <input
+              type="text"
+              placeholder="Locatie (optioneel)"
+              value={editLocation}
+              onChange={(e) => setEditLocation(e.target.value)}
+              className="w-full rounded border border-green-300 p-2 text-gray-900"
+            />
+            <button
+              type="submit"
+              className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
+            >
+              Opslaan
+            </button>
+          </form>
+        </details>
       )}
 
       {isAdmin && (
