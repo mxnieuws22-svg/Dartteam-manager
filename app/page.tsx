@@ -141,6 +141,28 @@ export default function Home() {
     setRoles((prev) => ({ ...prev, [playerId]: role }));
   }
 
+  function shareWhatsApp() {
+    if (!match) return;
+    const date = new Date(match.match_date).toLocaleDateString("nl-NL", {
+      dateStyle: "full",
+    });
+    const lines = [
+      "🎯 Darten met je Hart - 't Berghje",
+      `Volgende wedstrijd: tegen ${match.opponent || "onbekende tegenstander"}`,
+      `📅 ${date} · ${match.is_home ? "Thuiswedstrijd" : "Uitwedstrijd"}${
+        match.location ? ` · ${match.location}` : ""
+      }`,
+    ];
+    if (starters.length > 0) lines.push(`Opstelling: ${starters.join(", ")}`);
+    if (reserves.length > 0) lines.push(`Reserve: ${reserves.join(", ")}`);
+    lines.push(window.location.origin);
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(lines.join("\n"))}`,
+      "_blank",
+      "noopener",
+    );
+  }
+
   const names = (role: Role) =>
     players.filter((p) => roles[p.id] === role).map((p) => p.name);
   const starters = names("starter");
@@ -223,6 +245,14 @@ export default function Home() {
                 </div>
               </div>
             )}
+
+            <button
+              type="button"
+              onClick={shareWhatsApp}
+              className="w-full rounded bg-green-700 px-4 py-2 font-semibold text-white"
+            >
+              Deel via WhatsApp
+            </button>
 
             {isAdmin && (
               <details className="rounded border p-2">
