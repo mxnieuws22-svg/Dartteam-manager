@@ -204,6 +204,13 @@ export default function Home() {
           </>
         )}
       </section>
+
+      <Link
+        href="/statistieken"
+        className="block rounded-lg border bg-white p-4 font-semibold text-green-700"
+      >
+        Statistieken: wie stond hoe vaak in de basis →
+      </Link>
     </main>
   );
 }
