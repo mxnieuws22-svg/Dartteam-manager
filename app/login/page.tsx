@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -38,6 +39,14 @@ export default function LoginPage() {
         onSubmit={handleSubmit}
         className="w-full max-w-sm space-y-4 rounded-lg bg-white p-6 shadow"
       >
+        <Image
+          src="/logo.png"
+          alt="Darten met je Hart - 't Berghje"
+          width={1152}
+          height={768}
+          priority
+          className="w-full rounded"
+        />
         <h1 className="text-2xl font-bold text-gray-900">Beheerder inloggen</h1>
 
         <input
