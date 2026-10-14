@@ -20,8 +20,8 @@ export default function NavBar() {
 
   return (
     <header className="border-b bg-white">
-      <div className="mx-auto flex max-w-2xl items-center justify-between gap-2 p-3">
-        <nav className="flex gap-1">
+      <div className="mx-auto flex max-w-2xl flex-wrap items-center justify-between gap-2 p-3">
+        <nav className="flex flex-wrap gap-1">
           {links.map((l) => {
             const active =
               l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);

@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import ScoreBadge from "@/components/ScoreBadge";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 
 type Match = {
@@ -12,6 +13,8 @@ type Match = {
   match_date: string;
   location: string | null;
   is_home: boolean;
+  score_for: number | null;
+  score_against: number | null;
 };
 
 type Player = { id: string; name: string };
@@ -40,7 +43,9 @@ export default function Home() {
     const today = new Date().toISOString().slice(0, 10);
     const { data: all, error: matchError } = await supabase
       .from("matches")
-      .select("id, opponent, match_date, location, is_home, status")
+      .select(
+        "id, opponent, match_date, location, is_home, status, score_for, score_against",
+      )
       .order("match_date");
 
     if (matchError) {
@@ -299,7 +304,7 @@ function MatchList({
                       {date.toLocaleDateString("nl-NL", { month: "short" })}
                     </div>
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="truncate font-semibold text-green-700">
                       {m.opponent || "Tegenstander onbekend"}
                     </div>
@@ -308,6 +313,10 @@ function MatchList({
                       {m.location && ` · ${m.location}`}
                     </div>
                   </div>
+                  <ScoreBadge
+                    scoreFor={m.score_for}
+                    scoreAgainst={m.score_against}
+                  />
                 </div>
                 {lineup && (
                   <div className="flex flex-wrap gap-1.5 border-t pt-3">
