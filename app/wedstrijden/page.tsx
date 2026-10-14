@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import ScoreBadge from "@/components/ScoreBadge";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 
 type Match = {
@@ -12,6 +13,8 @@ type Match = {
   location: string | null;
   is_home: boolean;
   status: "planned" | "played";
+  score_for: number | null;
+  score_against: number | null;
 };
 
 export default function WedstrijdenPage() {
@@ -28,7 +31,9 @@ export default function WedstrijdenPage() {
   async function loadMatches() {
     const { data, error } = await supabase
       .from("matches")
-      .select("id, opponent, match_date, location, is_home, status")
+      .select(
+        "id, opponent, match_date, location, is_home, status, score_for, score_against",
+      )
       .order("match_date");
 
     if (error) {
@@ -79,7 +84,7 @@ export default function WedstrijdenPage() {
   }
 
   const upcoming = matches.filter(
-    (m) => m.status === "planned" && m.match_date >= today
+    (m) => m.status === "planned" && m.match_date >= today,
   );
   const past = matches
     .filter((m) => !upcoming.includes(m))
@@ -90,44 +95,47 @@ export default function WedstrijdenPage() {
       <h1 className="text-2xl font-bold">Wedstrijden</h1>
 
       {isAdmin && (
-      <form onSubmit={addMatch} className="space-y-3 rounded-lg border bg-white p-4">
-        <input
-          type="text"
-          placeholder="Tegenstander"
-          value={opponent}
-          onChange={(e) => setOpponent(e.target.value)}
-          required
-          className="w-full rounded border border-green-300 p-2 text-gray-900"
-        />
-        <input
-          type="date"
-          value={matchDate}
-          onChange={(e) => setMatchDate(e.target.value)}
-          required
-          className="w-full rounded border border-green-300 p-2 text-gray-900"
-        />
-        <select
-          value={isHome ? "home" : "away"}
-          onChange={(e) => setIsHome(e.target.value === "home")}
-          className="w-full rounded border border-green-300 p-2 text-gray-900"
+        <form
+          onSubmit={addMatch}
+          className="space-y-3 rounded-lg border bg-white p-4"
         >
-          <option value="home">Thuiswedstrijd</option>
-          <option value="away">Uitwedstrijd</option>
-        </select>
-        <input
-          type="text"
-          placeholder="Locatie (optioneel)"
-          value={location}
-          onChange={(e) => setLocation(e.target.value)}
-          className="w-full rounded border border-green-300 p-2 text-gray-900"
-        />
-        <button
-          type="submit"
-          className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
-        >
-          Aanmaken
-        </button>
-      </form>
+          <input
+            type="text"
+            placeholder="Tegenstander"
+            value={opponent}
+            onChange={(e) => setOpponent(e.target.value)}
+            required
+            className="w-full rounded border border-green-300 p-2 text-gray-900"
+          />
+          <input
+            type="date"
+            value={matchDate}
+            onChange={(e) => setMatchDate(e.target.value)}
+            required
+            className="w-full rounded border border-green-300 p-2 text-gray-900"
+          />
+          <select
+            value={isHome ? "home" : "away"}
+            onChange={(e) => setIsHome(e.target.value === "home")}
+            className="w-full rounded border border-green-300 p-2 text-gray-900"
+          >
+            <option value="home">Thuiswedstrijd</option>
+            <option value="away">Uitwedstrijd</option>
+          </select>
+          <input
+            type="text"
+            placeholder="Locatie (optioneel)"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            className="w-full rounded border border-green-300 p-2 text-gray-900"
+          />
+          <button
+            type="submit"
+            className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
+          >
+            Aanmaken
+          </button>
+        </form>
       )}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
@@ -149,7 +157,6 @@ export default function WedstrijdenPage() {
     </main>
   );
 }
-
 
 function MatchSection({
   title,
@@ -205,6 +212,10 @@ function MatchSection({
                   {m.status === "played" && " · gespeeld"}
                 </div>
               </div>
+              <ScoreBadge
+                scoreFor={m.score_for}
+                scoreAgainst={m.score_against}
+              />
               {isAdmin && (
                 <button
                   onClick={() => onDelete(m.id)}

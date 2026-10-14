@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import ScoreBadge from "@/components/ScoreBadge";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 
 type Player = {
@@ -17,6 +18,8 @@ type Match = {
   match_date: string;
   is_home: boolean;
   location: string | null;
+  score_for: number | null;
+  score_against: number | null;
 };
 type Role = "none" | "starter" | "reserve";
 
@@ -36,13 +39,17 @@ function WedstrijdDetail() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [available, setAvailable] = useState<Record<string, boolean>>({});
   const [lineup, setLineup] = useState<Record<string, Role>>({});
+  const [scoreFor, setScoreFor] = useState("");
+  const [scoreAgainst, setScoreAgainst] = useState("");
   const [error, setError] = useState("");
 
   async function load() {
     const [m, p, a, l] = await Promise.all([
       supabase
         .from("matches")
-        .select("opponent, match_date, is_home, location")
+        .select(
+          "opponent, match_date, is_home, location, score_for, score_against",
+        )
         .eq("id", id)
         .single(),
       supabase
@@ -65,6 +72,8 @@ function WedstrijdDetail() {
       return;
     }
     setMatch(m.data);
+    setScoreFor(m.data.score_for?.toString() ?? "");
+    setScoreAgainst(m.data.score_against?.toString() ?? "");
     // Spelers die het team hebben verlaten blijven alleen zichtbaar als ze bij deze wedstrijd horen.
     const linked = new Set([
       ...(a.data ?? []).map((r) => r.player_id),
@@ -104,6 +113,34 @@ function WedstrijdDetail() {
       return;
     }
     setAvailable((prev) => ({ ...prev, [playerId]: isAvailable }));
+  }
+
+  async function saveResult(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+
+    const filled = [scoreFor, scoreAgainst].filter((v) => v !== "").length;
+    if (filled === 1) {
+      setError("Vul beide scores in, of laat beide leeg.");
+      return;
+    }
+    const both = filled === 2;
+    const update = {
+      score_for: both ? Number(scoreFor) : null,
+      score_against: both ? Number(scoreAgainst) : null,
+      ...(both && { status: "played" }),
+    };
+
+    const { error } = await supabase
+      .from("matches")
+      .update(update)
+      .eq("id", id);
+
+    if (error) {
+      setError("Uitslag opslaan mislukt.");
+      return;
+    }
+    setMatch((prev) => (prev ? { ...prev, ...update } : prev));
   }
 
   async function setRole(playerId: string, role: Role) {
@@ -154,6 +191,19 @@ function WedstrijdDetail() {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
+      {match && match.score_for !== null && match.score_against !== null && (
+        <div className="flex items-center gap-3">
+          <span className="font-semibold">Uitslag</span>
+          <ScoreBadge
+            scoreFor={match.score_for}
+            scoreAgainst={match.score_against}
+          />
+          <span className="text-sm text-green-900/60">
+            wij - {match.opponent || "tegenstander"}
+          </span>
+        </div>
+      )}
+
       {starters.length + reserves.length === 0 ? (
         <p className="text-green-900/70">De opstelling is nog niet bepaald.</p>
       ) : (
@@ -181,6 +231,44 @@ function WedstrijdDetail() {
             </div>
           )}
         </div>
+      )}
+
+      {isAdmin && (
+        <form
+          onSubmit={saveResult}
+          className="space-y-2 rounded border bg-white p-3"
+        >
+          <h2 className="font-semibold">Uitslag invullen</h2>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={0}
+              inputMode="numeric"
+              aria-label="Onze score"
+              placeholder="Wij"
+              value={scoreFor}
+              onChange={(e) => setScoreFor(e.target.value)}
+              className="w-20 rounded border border-green-300 p-2 text-gray-900"
+            />
+            <span>-</span>
+            <input
+              type="number"
+              min={0}
+              inputMode="numeric"
+              aria-label="Score tegenstander"
+              placeholder="Zij"
+              value={scoreAgainst}
+              onChange={(e) => setScoreAgainst(e.target.value)}
+              className="w-20 rounded border border-green-300 p-2 text-gray-900"
+            />
+            <button
+              type="submit"
+              className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
+            >
+              Opslaan
+            </button>
+          </div>
+        </form>
       )}
 
       {isAdmin && (
