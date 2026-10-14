@@ -22,27 +22,36 @@ export default function Home() {
   const isAdmin = useIsAdmin();
   const [loaded, setLoaded] = useState(false);
   const [match, setMatch] = useState<Match | null>(null);
+  const [later, setLater] = useState<Match[]>([]);
+  const [earlier, setEarlier] = useState<Match[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
   const [roles, setRoles] = useState<Record<string, Role>>({});
   const [error, setError] = useState("");
 
   async function load() {
     const today = new Date().toISOString().slice(0, 10);
-    const { data: next, error: matchError } = await supabase
+    const { data: all, error: matchError } = await supabase
       .from("matches")
-      .select("id, opponent, match_date, location, is_home")
-      .eq("status", "planned")
-      .gte("match_date", today)
-      .order("match_date")
-      .limit(1)
-      .maybeSingle();
+      .select("id, opponent, match_date, location, is_home, status")
+      .order("match_date");
 
     if (matchError) {
-      setError("Volgende wedstrijd laden mislukt.");
+      setError("Wedstrijden laden mislukt.");
       setLoaded(true);
       return;
     }
+    const upcoming = (all ?? []).filter(
+      (m) => m.status === "planned" && m.match_date >= today
+    );
+    const next = upcoming[0] ?? null;
     setMatch(next);
+    setLater(upcoming.slice(1, 4));
+    setEarlier(
+      (all ?? [])
+        .filter((m) => !upcoming.includes(m))
+        .sort((x, y) => y.match_date.localeCompare(x.match_date))
+        .slice(0, 3)
+    );
 
     if (next) {
       const [playersRes, lineupRes] = await Promise.all([
@@ -159,7 +168,7 @@ export default function Home() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <h3 className="mb-1 font-semibold">
-                    Spelers
+                    Opstelling
                   </h3>
                   <ul className="space-y-1">
                     {starters.map((n) => (
@@ -187,7 +196,7 @@ export default function Home() {
             {isAdmin && (
               <details className="rounded border p-2">
                 <summary className="cursor-pointer font-semibold text-green-700">
-                  Spelers toevoegen of weghalen
+                  Opstelling aanpassen
                 </summary>
                 <ul className="mt-2 space-y-2">
                   {players.map((p) => (
@@ -202,7 +211,7 @@ export default function Home() {
                         className="rounded border border-green-300 p-1 text-gray-900"
                       >
                         <option value="none">Niet opgesteld</option>
-                        <option value="starter">Speler</option>
+                        <option value="starter">Basis</option>
                         <option value="reserve">Reserve</option>
                       </select>
                     </li>
@@ -214,6 +223,9 @@ export default function Home() {
         )}
       </section>
 
+      <MatchList title="Hierna" matches={later} />
+      <MatchList title="Laatste wedstrijden" matches={earlier} />
+
       <Link
         href="/statistieken"
         className="block rounded-lg border bg-white p-4 font-semibold text-green-700"
@@ -221,5 +233,47 @@ export default function Home() {
         Statistieken: wie stond hoe vaak in de basis →
       </Link>
     </main>
+  );
+}
+
+
+function MatchList({ title, matches }: { title: string; matches: Match[] }) {
+  if (matches.length === 0) return null;
+
+  return (
+    <section>
+      <h2 className="mb-2 text-lg font-semibold">{title}</h2>
+      <ul className="space-y-2">
+        {matches.map((m) => {
+          const date = new Date(m.match_date);
+          return (
+            <li key={m.id}>
+              <Link
+                href={`/wedstrijden/${m.id}`}
+                className="flex items-center gap-3 rounded-lg border bg-white p-3"
+              >
+                <div className="w-14 shrink-0 rounded bg-green-100 py-1 text-center text-green-900">
+                  <div className="text-xl font-bold leading-tight">
+                    {date.getDate()}
+                  </div>
+                  <div className="text-xs uppercase">
+                    {date.toLocaleDateString("nl-NL", { month: "short" })}
+                  </div>
+                </div>
+                <div className="min-w-0">
+                  <div className="truncate font-semibold text-green-700">
+                    {m.opponent || "Tegenstander onbekend"}
+                  </div>
+                  <div className="truncate text-sm text-green-900/60">
+                    {m.is_home ? "Thuis" : "Uit"}
+                    {m.location && ` · ${m.location}`}
+                  </div>
+                </div>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
