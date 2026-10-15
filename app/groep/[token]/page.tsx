@@ -89,6 +89,12 @@ function Groep() {
       setError("Opslaan mislukt. Probeer het opnieuw.");
       return;
     }
+
+    fetch("/api/push", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token, playerId, matchId }),
+    }).catch(() => {});
     setTeam((prev) =>
       prev
         ? {

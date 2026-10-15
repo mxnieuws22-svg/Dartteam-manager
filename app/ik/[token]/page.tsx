@@ -65,6 +65,12 @@ function Beschikbaarheid() {
       setError("Opslaan mislukt. Probeer het opnieuw.");
       return;
     }
+
+    fetch("/api/push", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token, matchId }),
+    }).catch(() => {});
     setMe((prev) =>
       prev
         ? {
