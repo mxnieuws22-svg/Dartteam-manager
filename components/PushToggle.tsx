@@ -23,7 +23,11 @@ export default function PushToggle() {
 
   useEffect(() => {
     async function check() {
-      if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      if (
+        !("serviceWorker" in navigator) ||
+        !("PushManager" in window) ||
+        !("Notification" in window)
+      ) {
         const apple = /iPhone|iPad|iPod/.test(navigator.userAgent);
         setStatus(apple ? "ios" : "unsupported");
         return;
@@ -32,7 +36,12 @@ export default function PushToggle() {
         setStatus("denied");
         return;
       }
-      setStatus((await currentSubscription()) ? "on" : "off");
+      try {
+        setStatus((await currentSubscription()) ? "on" : "off");
+      } catch {
+        // Niet te controleren (bijvoorbeeld in een privévenster): gewoon laten aanzetten.
+        setStatus("off");
+      }
     }
     check();
   }, []);
@@ -98,6 +107,9 @@ export default function PushToggle() {
         Krijg een melding zodra een speler aangeeft of hij kan.
       </p>
 
+      {status === "checking" && (
+        <p className="text-sm text-green-900/60">Even kijken...</p>
+      )}
       {status === "ios" && (
         <p className="text-sm">
           Op een iPhone werkt dit alleen vanuit de app op je beginscherm. Zet de
