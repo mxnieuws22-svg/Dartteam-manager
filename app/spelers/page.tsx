@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import PushToggle from "@/components/PushToggle";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 
 type Player = {
@@ -163,6 +164,8 @@ export default function SpelersPage() {
       )}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
+
+      {isAdmin && <PushToggle />}
 
       {isAdmin && teamToken && (
         <section className="space-y-2 rounded-lg border bg-white p-4">
