@@ -19,6 +19,7 @@ export default function SpelersPage() {
   const [error, setError] = useState("");
   const [tokens, setTokens] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState("");
+  const [teamToken, setTeamToken] = useState("");
 
   async function loadPlayers() {
     const { data, error } = await supabase
@@ -42,6 +43,11 @@ export default function SpelersPage() {
   useEffect(() => {
     if (!isAdmin) return;
     supabase
+      .from("team_link")
+      .select("token")
+      .maybeSingle()
+      .then(({ data }) => setTeamToken(data?.token ?? ""));
+    supabase
       .from("player_tokens")
       .select("player_id, token")
       .then(({ data }) =>
@@ -60,6 +66,25 @@ export default function SpelersPage() {
     await navigator.clipboard.writeText(linkFor(p));
     setCopied(p.id);
     setTimeout(() => setCopied(""), 2000);
+  }
+
+  function groupUrl() {
+    return `${window.location.origin}/groep/${teamToken}`;
+  }
+
+  async function copyGroupLink() {
+    await navigator.clipboard.writeText(groupUrl());
+    setCopied("groep");
+    setTimeout(() => setCopied(""), 2000);
+  }
+
+  function whatsappGroup() {
+    const text = `Geef via deze link aan of je kunt voor de komende wedstrijden van Darten met je Hart: ${groupUrl()}`;
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(text)}`,
+      "_blank",
+      "noopener",
+    );
   }
 
   function whatsappLink(p: Player) {
@@ -138,6 +163,30 @@ export default function SpelersPage() {
       )}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
+
+      {isAdmin && teamToken && (
+        <section className="space-y-2 rounded-lg border bg-white p-4">
+          <h2 className="font-semibold">Link voor de groepsapp</h2>
+          <p className="text-sm text-green-900/70">
+            Eén link voor iedereen: spelers kiezen hun naam en geven aan of ze
+            kunnen.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={copyGroupLink}
+              className="rounded border border-green-300 px-4 py-2 text-sm font-semibold text-green-900"
+            >
+              {copied === "groep" ? "Gekopieerd!" : "Kopieer link"}
+            </button>
+            <button
+              onClick={whatsappGroup}
+              className="rounded bg-green-700 px-4 py-2 text-sm font-semibold text-white"
+            >
+              Deel via WhatsApp
+            </button>
+          </div>
+        </section>
+      )}
 
       <section>
         <h2 className="mb-2 text-lg font-semibold">
