@@ -20,7 +20,6 @@ export default function PushToggle() {
   const supabase = createClient();
   const [status, setStatus] = useState<Status>("checking");
   const [error, setError] = useState("");
-  const [testResult, setTestResult] = useState("");
 
   useEffect(() => {
     async function check() {
@@ -81,34 +80,6 @@ export default function PushToggle() {
       setStatus("on");
     } catch {
       setError("Meldingen aanzetten is niet gelukt.");
-    }
-  }
-
-  async function sendTest() {
-    setError("");
-    setTestResult("");
-    try {
-      const response = await fetch("/api/push-test", { method: "POST" });
-      const result = await response.json();
-      if (!response.ok) {
-        setError(result.error ?? "Testmelding versturen mislukt.");
-        return;
-      }
-      if (result.sent > 0) {
-        setTestResult(
-          result.sent === 1
-            ? "Testmelding verstuurd. Die komt zo binnen op je telefoon."
-            : `Testmelding verstuurd naar ${result.sent} toestellen.`,
-        );
-      } else if (result.failed > 0) {
-        setError(
-          "De testmelding is niet aangekomen. Zet meldingen uit en weer aan.",
-        );
-      } else {
-        setError("Er is geen toestel aangemeld.");
-      }
-    } catch {
-      setError("Testmelding versturen mislukt.");
     }
   }
 
@@ -176,17 +147,7 @@ export default function PushToggle() {
           </button>
         </div>
       )}
-      {status === "on" && (
-        <button
-          onClick={sendTest}
-          className="rounded bg-green-700 px-4 py-2 text-sm font-semibold text-white"
-        >
-          Stuur testmelding
-        </button>
-      )}
-      {testResult && (
-        <p className="text-sm font-semibold text-green-700">{testResult}</p>
-      )}
+
       {error && <p className="text-sm text-red-600">{error}</p>}
     </section>
   );
