@@ -246,13 +246,15 @@ export default function Home() {
               </div>
             )}
 
-            <button
-              type="button"
-              onClick={shareWhatsApp}
-              className="w-full rounded bg-green-700 px-4 py-2 font-semibold text-white"
-            >
-              Deel via WhatsApp
-            </button>
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={shareWhatsApp}
+                className="w-full rounded bg-green-700 px-4 py-2 font-semibold text-white"
+              >
+                Deel via WhatsApp
+              </button>
+            )}
 
             {isAdmin && (
               <details className="rounded border p-2">
