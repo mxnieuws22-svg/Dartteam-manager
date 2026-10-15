@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import ScoreBadge from "@/components/ScoreBadge";
 import { useIsAdmin } from "@/lib/useIsAdmin";
+import { useStandalone } from "@/lib/useStandalone";
 
 type Match = {
   id: string;
@@ -30,6 +31,7 @@ type PlayedRow = {
 export default function Home() {
   const supabase = createClient();
   const isAdmin = useIsAdmin();
+  const isApp = useStandalone();
   const [loaded, setLoaded] = useState(false);
   const [match, setMatch] = useState<Match | null>(null);
   const [later, setLater] = useState<Match[]>([]);
@@ -299,6 +301,14 @@ export default function Home() {
       >
         Statistieken: wie stond hoe vaak in de basis →
       </Link>
+
+      {isApp && !isAdmin && (
+        <p className="pt-2 text-center text-sm">
+          <Link href="/login" className="text-green-900/60 underline">
+            Beheerder inloggen
+          </Link>
+        </p>
+      )}
     </main>
   );
 }
