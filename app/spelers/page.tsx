@@ -17,6 +17,8 @@ export default function SpelersPage() {
   const [name, setName] = useState("");
   const [isReserve, setIsReserve] = useState(false);
   const [error, setError] = useState("");
+  const [tokens, setTokens] = useState<Record<string, string>>({});
+  const [copied, setCopied] = useState("");
 
   async function loadPlayers() {
     const { data, error } = await supabase
@@ -36,6 +38,38 @@ export default function SpelersPage() {
     loadPlayers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    supabase
+      .from("player_tokens")
+      .select("player_id, token")
+      .then(({ data }) =>
+        setTokens(
+          Object.fromEntries((data ?? []).map((t) => [t.player_id, t.token])),
+        ),
+      );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin]);
+
+  function linkFor(p: Player) {
+    return `${window.location.origin}/ik/${tokens[p.id]}`;
+  }
+
+  async function copyLink(p: Player) {
+    await navigator.clipboard.writeText(linkFor(p));
+    setCopied(p.id);
+    setTimeout(() => setCopied(""), 2000);
+  }
+
+  function whatsappLink(p: Player) {
+    const text = `Hoi ${p.name}, geef via deze link aan of je kunt voor de wedstrijden van Darten met je Hart: ${linkFor(p)}`;
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(text)}`,
+      "_blank",
+      "noopener",
+    );
+  }
 
   async function addPlayer(e: React.FormEvent) {
     e.preventDefault();
@@ -74,30 +108,33 @@ export default function SpelersPage() {
       <h1 className="text-2xl font-bold">Spelers</h1>
 
       {isAdmin && (
-      <form onSubmit={addPlayer} className="space-y-3 rounded-lg border bg-white p-4">
-        <input
-          type="text"
-          placeholder="Naam van de speler"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-          className="w-full rounded border border-green-300 p-2 text-gray-900"
-        />
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={isReserve}
-            onChange={(e) => setIsReserve(e.target.checked)}
-          />
-          Reserve
-        </label>
-        <button
-          type="submit"
-          className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
+        <form
+          onSubmit={addPlayer}
+          className="space-y-3 rounded-lg border bg-white p-4"
         >
-          Toevoegen
-        </button>
-      </form>
+          <input
+            type="text"
+            placeholder="Naam van de speler"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            className="w-full rounded border border-green-300 p-2 text-gray-900"
+          />
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={isReserve}
+              onChange={(e) => setIsReserve(e.target.checked)}
+            />
+            Reserve
+          </label>
+          <button
+            type="submit"
+            className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
+          >
+            Toevoegen
+          </button>
+        </form>
       )}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
@@ -110,17 +147,35 @@ export default function SpelersPage() {
           {starters.map((p) => (
             <li
               key={p.id}
-              className="flex items-center justify-between rounded border bg-white p-2"
+              className="flex items-center justify-between gap-3 rounded border bg-white p-2"
             >
               {p.name}
               {isAdmin && (
-<button
-                onClick={() => deletePlayer(p.id)}
-                className="text-sm text-red-600"
-              >
-                Verwijderen
-              </button>
-)}
+                <div className="flex items-center gap-3 text-sm">
+                  {tokens[p.id] && (
+                    <>
+                      <button
+                        onClick={() => copyLink(p)}
+                        className="text-green-700"
+                      >
+                        {copied === p.id ? "Gekopieerd!" : "Kopieer link"}
+                      </button>
+                      <button
+                        onClick={() => whatsappLink(p)}
+                        className="text-green-700"
+                      >
+                        WhatsApp
+                      </button>
+                    </>
+                  )}
+                  <button
+                    onClick={() => deletePlayer(p.id)}
+                    className="text-red-600"
+                  >
+                    Verwijderen
+                  </button>
+                </div>
+              )}
             </li>
           ))}
         </ul>
@@ -134,17 +189,35 @@ export default function SpelersPage() {
           {reserves.map((p) => (
             <li
               key={p.id}
-              className="flex items-center justify-between rounded border bg-white p-2"
+              className="flex items-center justify-between gap-3 rounded border bg-white p-2"
             >
               {p.name}
               {isAdmin && (
-<button
-                onClick={() => deletePlayer(p.id)}
-                className="text-sm text-red-600"
-              >
-                Verwijderen
-              </button>
-)}
+                <div className="flex items-center gap-3 text-sm">
+                  {tokens[p.id] && (
+                    <>
+                      <button
+                        onClick={() => copyLink(p)}
+                        className="text-green-700"
+                      >
+                        {copied === p.id ? "Gekopieerd!" : "Kopieer link"}
+                      </button>
+                      <button
+                        onClick={() => whatsappLink(p)}
+                        className="text-green-700"
+                      >
+                        WhatsApp
+                      </button>
+                    </>
+                  )}
+                  <button
+                    onClick={() => deletePlayer(p.id)}
+                    className="text-red-600"
+                  >
+                    Verwijderen
+                  </button>
+                </div>
+              )}
             </li>
           ))}
         </ul>
