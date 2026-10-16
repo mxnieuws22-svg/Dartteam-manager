@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import AskAvailability from "@/components/AskAvailability";
 import ScoreBadge from "@/components/ScoreBadge";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 import { useStandalone } from "@/lib/useStandalone";
@@ -39,6 +40,7 @@ export default function Home() {
   const [played, setPlayed] = useState<Record<string, Played>>({});
   const [players, setPlayers] = useState<Player[]>([]);
   const [roles, setRoles] = useState<Record<string, Role>>({});
+  const [availability, setAvailability] = useState<Record<string, boolean>>({});
   const [error, setError] = useState("");
 
   async function load() {
@@ -91,7 +93,7 @@ export default function Home() {
     }
 
     if (next) {
-      const [playersRes, lineupRes] = await Promise.all([
+      const [playersRes, lineupRes, availabilityRes] = await Promise.all([
         supabase
           .from("players")
           .select("id, name")
@@ -101,12 +103,24 @@ export default function Home() {
           .from("lineup")
           .select("player_id, is_starter")
           .eq("match_id", next.id),
+        supabase
+          .from("availability")
+          .select("player_id, is_available")
+          .eq("match_id", next.id),
       ]);
 
       if (playersRes.error || lineupRes.error) {
         setError("Opstelling laden mislukt.");
       } else {
         setPlayers(playersRes.data ?? []);
+        setAvailability(
+          Object.fromEntries(
+            (availabilityRes.data ?? []).map((r) => [
+              r.player_id,
+              r.is_available,
+            ]),
+          ),
+        );
         setRoles(
           Object.fromEntries(
             (lineupRes.data ?? []).map((r) => [
@@ -287,6 +301,17 @@ export default function Home() {
           </>
         )}
       </section>
+
+      {isAdmin && match && (
+        <AskAvailability
+          matchId={match.id}
+          opponent={match.opponent}
+          matchDate={match.match_date}
+          isHome={match.is_home}
+          players={players}
+          available={availability}
+        />
+      )}
 
       <MatchList title="Hierna" matches={later} />
       <MatchList

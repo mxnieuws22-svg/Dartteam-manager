@@ -1,6 +1,7 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import Link from "next/link";
+import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -25,6 +26,7 @@ export default function IkPage() {
 
 function Beschikbaarheid() {
   const { token } = useParams<{ token: string }>();
+  const only = useSearchParams().get("w");
   const supabase = createClient();
   const [me, setMe] = useState<Me | null>(null);
   const [state, setState] = useState<"loading" | "ok" | "invalid">("loading");
@@ -96,6 +98,10 @@ function Beschikbaarheid() {
     );
   }
 
+  // Met ?w=<wedstrijd> alleen die ene wedstrijd tonen, zolang die nog komt.
+  const single = only ? me.matches.find((m) => m.id === only) : undefined;
+  const shown = single ? [single] : me.matches;
+
   return (
     <main className="mx-auto max-w-2xl space-y-6 p-4">
       <div>
@@ -107,10 +113,10 @@ function Beschikbaarheid() {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      {me.matches.length === 0 && <p>Er staan geen wedstrijden gepland.</p>}
+      {shown.length === 0 && <p>Er staan geen wedstrijden gepland.</p>}
 
       <ul className="space-y-3">
-        {me.matches.map((m) => {
+        {shown.map((m) => {
           const date = new Date(m.match_date).toLocaleDateString("nl-NL", {
             dateStyle: "full",
           });
@@ -156,6 +162,14 @@ function Beschikbaarheid() {
           );
         })}
       </ul>
+
+      {single && me.matches.length > 1 && (
+        <p className="text-center text-sm">
+          <Link href={`/ik/${token}`} className="text-green-700 underline">
+            Alle komende wedstrijden bekijken
+          </Link>
+        </p>
+      )}
     </main>
   );
 }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import AskAvailability from "@/components/AskAvailability";
 import ScoreBadge from "@/components/ScoreBadge";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 
@@ -46,42 +47,7 @@ function WedstrijdDetail() {
   const [editIsHome, setEditIsHome] = useState(true);
   const [editLocation, setEditLocation] = useState("");
   const [error, setError] = useState("");
-  const [teamToken, setTeamToken] = useState("");
   const [upcoming, setUpcoming] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    if (!isAdmin) return;
-    supabase
-      .from("team_link")
-      .select("token")
-      .maybeSingle()
-      .then(({ data }) => setTeamToken(data?.token ?? ""));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin]);
-
-  function askLink() {
-    return `${window.location.origin}/groep/${teamToken}?w=${id}`;
-  }
-
-  async function copyAskLink() {
-    await navigator.clipboard.writeText(askLink());
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
-  function askWhatsApp() {
-    if (!match) return;
-    const date = new Date(match.match_date).toLocaleDateString("nl-NL", {
-      dateStyle: "full",
-    });
-    const text = `${match.is_home ? "Thuiswedstrijd" : "Uitwedstrijd"} tegen ${match.opponent || "de tegenstander"} op ${date}. Kun je? Geef het door via deze link: ${askLink()}`;
-    window.open(
-      `https://wa.me/?text=${encodeURIComponent(text)}`,
-      "_blank",
-      "noopener",
-    );
-  }
 
   async function load() {
     const [m, p, a, l] = await Promise.all([
@@ -262,28 +228,15 @@ function WedstrijdDetail() {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      {isAdmin && upcoming && teamToken && (
-        <section className="space-y-2 rounded-lg border bg-white p-4">
-          <h2 className="font-semibold">Vraag wie er kan</h2>
-          <p className="text-sm text-green-900/70">
-            Stuur deze link naar de groep: spelers kiezen hun naam en geven voor
-            alleen deze wedstrijd aan of ze kunnen.
-          </p>
-          <div className="flex gap-2">
-            <button
-              onClick={copyAskLink}
-              className="rounded border border-green-300 px-4 py-2 text-sm font-semibold text-green-900"
-            >
-              {copied ? "Gekopieerd!" : "Kopieer link"}
-            </button>
-            <button
-              onClick={askWhatsApp}
-              className="rounded bg-green-700 px-4 py-2 text-sm font-semibold text-white"
-            >
-              Deel via WhatsApp
-            </button>
-          </div>
-        </section>
+      {isAdmin && upcoming && match && (
+        <AskAvailability
+          matchId={id}
+          opponent={match.opponent}
+          matchDate={match.match_date}
+          isHome={match.is_home}
+          players={players}
+          available={available}
+        />
       )}
 
       {match && match.score_for !== null && match.score_against !== null && (
