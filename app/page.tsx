@@ -304,7 +304,6 @@ export default function Home() {
 
       {isAdmin && match && (
         <AskAvailability
-          matchId={match.id}
           opponent={match.opponent}
           matchDate={match.match_date}
           isHome={match.is_home}

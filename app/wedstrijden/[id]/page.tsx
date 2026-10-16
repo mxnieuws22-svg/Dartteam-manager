@@ -230,7 +230,6 @@ function WedstrijdDetail() {
 
       {isAdmin && upcoming && match && (
         <AskAvailability
-          matchId={id}
           opponent={match.opponent}
           matchDate={match.match_date}
           isHome={match.is_home}
