@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import AvailabilityOverview from "@/components/AvailabilityOverview";
 import { createClient } from "@/lib/supabase/client";
 
 type Player = { id: string; name: string; is_active?: boolean };
@@ -69,10 +70,18 @@ export default function AskAvailability({
     );
   }
 
-  const askable = players.filter((p) => p.is_active !== false && tokens[p.id]);
+  const active = players.filter((p) => p.is_active !== false);
+  const askable = active.filter((p) => tokens[p.id]);
 
   return (
     <>
+      {active.length > 0 && (
+        <section className="space-y-3 rounded-lg border bg-white p-4">
+          <h2 className="font-semibold">Wie kan er?</h2>
+          <AvailabilityOverview players={active} answers={available} />
+        </section>
+      )}
+
       {teamToken && (
         <section className="space-y-2 rounded-lg border bg-white p-4">
           <h2 className="font-semibold">Vraag wie er kan</h2>
