@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import AskAvailability from "@/components/AskAvailability";
 import ScoreBadge from "@/components/ScoreBadge";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 
@@ -46,75 +47,7 @@ function WedstrijdDetail() {
   const [editIsHome, setEditIsHome] = useState(true);
   const [editLocation, setEditLocation] = useState("");
   const [error, setError] = useState("");
-  const [teamToken, setTeamToken] = useState("");
   const [upcoming, setUpcoming] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [tokens, setTokens] = useState<Record<string, string>>({});
-  const [copiedPlayer, setCopiedPlayer] = useState("");
-
-  useEffect(() => {
-    if (!isAdmin) return;
-    supabase
-      .from("team_link")
-      .select("token")
-      .maybeSingle()
-      .then(({ data }) => setTeamToken(data?.token ?? ""));
-    supabase
-      .from("player_tokens")
-      .select("player_id, token")
-      .then(({ data }) =>
-        setTokens(
-          Object.fromEntries((data ?? []).map((t) => [t.player_id, t.token])),
-        ),
-      );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin]);
-
-  function askLink() {
-    return `${window.location.origin}/groep/${teamToken}?w=${id}`;
-  }
-
-  async function copyAskLink() {
-    await navigator.clipboard.writeText(askLink());
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
-  function personalLink(playerId: string) {
-    return `${window.location.origin}/ik/${tokens[playerId]}?w=${id}`;
-  }
-
-  async function copyPersonal(playerId: string) {
-    await navigator.clipboard.writeText(personalLink(playerId));
-    setCopiedPlayer(playerId);
-    setTimeout(() => setCopiedPlayer(""), 2000);
-  }
-
-  function personalWhatsApp(p: Player) {
-    if (!match) return;
-    const date = new Date(match.match_date).toLocaleDateString("nl-NL", {
-      dateStyle: "full",
-    });
-    const text = `Hoi ${p.name}, ${match.is_home ? "thuiswedstrijd" : "uitwedstrijd"} tegen ${match.opponent || "de tegenstander"} op ${date}. Kun je? Geef het door via jouw eigen link: ${personalLink(p.id)}`;
-    window.open(
-      `https://wa.me/?text=${encodeURIComponent(text)}`,
-      "_blank",
-      "noopener",
-    );
-  }
-
-  function askWhatsApp() {
-    if (!match) return;
-    const date = new Date(match.match_date).toLocaleDateString("nl-NL", {
-      dateStyle: "full",
-    });
-    const text = `${match.is_home ? "Thuiswedstrijd" : "Uitwedstrijd"} tegen ${match.opponent || "de tegenstander"} op ${date}. Kun je? Geef het door via deze link: ${askLink()}`;
-    window.open(
-      `https://wa.me/?text=${encodeURIComponent(text)}`,
-      "_blank",
-      "noopener",
-    );
-  }
 
   async function load() {
     const [m, p, a, l] = await Promise.all([
@@ -295,90 +228,16 @@ function WedstrijdDetail() {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      {isAdmin && upcoming && teamToken && (
-        <section className="space-y-2 rounded-lg border bg-white p-4">
-          <h2 className="font-semibold">Vraag wie er kan</h2>
-          <p className="text-sm text-green-900/70">
-            Stuur deze link naar de groep: spelers kiezen hun naam en geven voor
-            alleen deze wedstrijd aan of ze kunnen.
-          </p>
-          <div className="flex gap-2">
-            <button
-              onClick={copyAskLink}
-              className="rounded border border-green-300 px-4 py-2 text-sm font-semibold text-green-900"
-            >
-              {copied ? "Gekopieerd!" : "Kopieer link"}
-            </button>
-            <button
-              onClick={askWhatsApp}
-              className="rounded bg-green-700 px-4 py-2 text-sm font-semibold text-white"
-            >
-              Deel via WhatsApp
-            </button>
-          </div>
-        </section>
+      {isAdmin && upcoming && match && (
+        <AskAvailability
+          matchId={id}
+          opponent={match.opponent}
+          matchDate={match.match_date}
+          isHome={match.is_home}
+          players={players}
+          available={available}
+        />
       )}
-
-      {isAdmin &&
-        upcoming &&
-        players.some((p) => p.is_active && tokens[p.id]) && (
-          <details className="rounded-lg border bg-white p-4">
-            <summary className="cursor-pointer font-semibold text-green-700">
-              Persoonlijke links per speler
-            </summary>
-            <p className="mt-2 text-sm text-green-900/70">
-              Elke speler heeft een eigen link voor alleen deze wedstrijd.
-              Handig om iemand te herinneren die nog niet gereageerd heeft.
-            </p>
-            <ul className="mt-2 space-y-2">
-              {players
-                .filter((p) => p.is_active && tokens[p.id])
-                .map((p) => {
-                  const answer =
-                    p.id in available
-                      ? available[p.id]
-                        ? "kan"
-                        : "kan niet"
-                      : "nog niet gereageerd";
-                  return (
-                    <li
-                      key={p.id}
-                      className="flex items-center justify-between gap-3"
-                    >
-                      <div className="min-w-0">
-                        <div className="truncate font-semibold">{p.name}</div>
-                        <div
-                          className={`text-sm ${
-                            answer === "kan"
-                              ? "text-green-700"
-                              : answer === "kan niet"
-                                ? "text-red-600"
-                                : "text-green-900/60"
-                          }`}
-                        >
-                          {answer}
-                        </div>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-3 text-sm">
-                        <button
-                          onClick={() => copyPersonal(p.id)}
-                          className="text-green-700"
-                        >
-                          {copiedPlayer === p.id ? "Gekopieerd!" : "Kopieer"}
-                        </button>
-                        <button
-                          onClick={() => personalWhatsApp(p)}
-                          className="text-green-700"
-                        >
-                          WhatsApp
-                        </button>
-                      </div>
-                    </li>
-                  );
-                })}
-            </ul>
-          </details>
-        )}
 
       {match && match.score_for !== null && match.score_against !== null && (
         <div className="flex items-center gap-3">
