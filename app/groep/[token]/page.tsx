@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import AvailabilityOverview from "@/components/AvailabilityOverview";
+import { decodeToken, encodeToken, isMatch } from "@/lib/links";
 import { createClient } from "@/lib/supabase/client";
 
 type Player = { id: string; name: string };
@@ -31,7 +32,9 @@ export default function GroepPage() {
 }
 
 function Groep() {
-  const { token } = useParams<{ token: string }>();
+  const { token: linkToken } = useParams<{ token: string }>();
+  // In de link staat een korte code; de database gebruikt de lange uuid.
+  const token = decodeToken(linkToken);
   const only = useSearchParams().get("w");
   const supabase = createClient();
   const [team, setTeam] = useState<Team | null>(null);
@@ -141,8 +144,9 @@ function Groep() {
   }
 
   // Met ?w=<wedstrijd> alleen die ene wedstrijd tonen, zolang die nog komt.
-  const single = only ? team.matches.find((m) => m.id === only) : undefined;
-  const shown = single ? [single] : team.matches;
+  const selected = only ? team.matches.filter((m) => isMatch(m, only)) : [];
+  const single = selected[0];
+  const shown = selected.length > 0 ? selected : team.matches;
 
   return (
     <main className="mx-auto max-w-2xl space-y-6 p-4">
@@ -228,9 +232,12 @@ function Groep() {
         })}
       </ul>
 
-      {single && team.matches.length > 1 && (
+      {single && team.matches.length > selected.length && (
         <p className="text-center text-sm">
-          <Link href={`/groep/${token}`} className="text-green-700 underline">
+          <Link
+            href={`/groep/${encodeToken(token)}`}
+            className="text-green-700 underline"
+          >
             Alle komende wedstrijden bekijken
           </Link>
         </p>

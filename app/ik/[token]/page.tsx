@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { decodeToken, encodeToken, isMatch } from "@/lib/links";
 import { createClient } from "@/lib/supabase/client";
 
 type UpcomingMatch = {
@@ -25,7 +26,9 @@ export default function IkPage() {
 }
 
 function Beschikbaarheid() {
-  const { token } = useParams<{ token: string }>();
+  const { token: linkToken } = useParams<{ token: string }>();
+  // In de link staat een korte code; de database gebruikt de lange uuid.
+  const token = decodeToken(linkToken);
   const only = useSearchParams().get("w");
   const supabase = createClient();
   const [me, setMe] = useState<Me | null>(null);
@@ -106,8 +109,9 @@ function Beschikbaarheid() {
   }
 
   // Met ?w=<wedstrijd> alleen die ene wedstrijd tonen, zolang die nog komt.
-  const single = only ? me.matches.find((m) => m.id === only) : undefined;
-  const shown = single ? [single] : me.matches;
+  const selected = only ? me.matches.filter((m) => isMatch(m, only)) : [];
+  const single = selected[0];
+  const shown = selected.length > 0 ? selected : me.matches;
 
   return (
     <main className="mx-auto max-w-2xl space-y-6 p-4">
@@ -170,9 +174,12 @@ function Beschikbaarheid() {
         })}
       </ul>
 
-      {single && me.matches.length > 1 && (
+      {single && me.matches.length > selected.length && (
         <p className="text-center text-sm">
-          <Link href={`/ik/${token}`} className="text-green-700 underline">
+          <Link
+            href={`/ik/${encodeToken(token)}`}
+            className="text-green-700 underline"
+          >
             Alle komende wedstrijden bekijken
           </Link>
         </p>

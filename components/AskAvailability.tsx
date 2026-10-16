@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import AvailabilityOverview from "@/components/AvailabilityOverview";
+import { dateCode, encodeToken } from "@/lib/links";
 import { createClient } from "@/lib/supabase/client";
 
 type Player = { id: string; name: string; is_active?: boolean };
 
 type Props = {
-  matchId: string;
   opponent: string | null;
   matchDate: string;
   isHome: boolean;
@@ -18,7 +18,6 @@ type Props = {
 
 // Voor de beheerder: de groepslink en de persoonlijke links om te vragen wie er kan bij één wedstrijd.
 export default function AskAvailability({
-  matchId,
   opponent,
   matchDate,
   isHome,
@@ -47,10 +46,14 @@ export default function AskAvailability({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Vaste groepslink: toont altijd alle komende wedstrijden, dus één keer vastzetten is genoeg.
+  const fixedLink = () =>
+    `${window.location.origin}/groep/${encodeToken(teamToken)}`;
+  // Groepslink alleen voor deze wedstrijd.
   const groupLink = () =>
-    `${window.location.origin}/groep/${teamToken}?w=${matchId}`;
+    `${window.location.origin}/groep/${encodeToken(teamToken)}?w=${dateCode(matchDate)}`;
   const personalLink = (playerId: string) =>
-    `${window.location.origin}/ik/${tokens[playerId]}?w=${matchId}`;
+    `${window.location.origin}/ik/${encodeToken(tokens[playerId])}?w=${dateCode(matchDate)}`;
 
   const longDate = () =>
     new Date(matchDate).toLocaleDateString("nl-NL", { dateStyle: "full" });
@@ -92,29 +95,49 @@ export default function AskAvailability({
       )}
 
       {teamToken && (
-        <section className="space-y-2 rounded-lg border bg-white p-4">
+        <section className="space-y-3 rounded-lg border bg-white p-4">
           <h2 className="font-semibold">Vraag wie er kan</h2>
-          <p className="text-sm text-green-900/70">
-            Stuur deze link naar de groep: spelers kiezen hun naam en geven voor
-            alleen deze wedstrijd aan of ze kunnen.
-          </p>
-          <div className="flex gap-2">
-            <button
-              onClick={() => copy("groep", groupLink())}
-              className="rounded border border-green-300 px-4 py-2 text-sm font-semibold text-green-900"
-            >
-              {copied === "groep" ? "Gekopieerd!" : "Kopieer link"}
-            </button>
+
+          <div className="space-y-2">
+            <p className="text-sm text-green-900/70">
+              Meld deze wedstrijd in de groepsapp met de vaste link. Die staat
+              het best vastgezet in de groep en toont altijd alle komende
+              wedstrijden.
+            </p>
             <button
               onClick={() =>
                 whatsApp(
-                  `${isHome ? "Thuiswedstrijd" : "Uitwedstrijd"} tegen ${opponentName} op ${longDate()}. Kun je? Geef het door via deze link: ${groupLink()}`,
+                  `Nieuwe wedstrijd: ${isHome ? "thuis" : "uit"} tegen ${opponentName} op ${longDate()}. Geef door of je kunt via de vaste link: ${fixedLink()}`,
                 )
               }
-              className="rounded bg-green-700 px-4 py-2 text-sm font-semibold text-white"
+              className="w-full rounded bg-green-700 px-4 py-2 font-semibold text-white"
             >
-              Deel via WhatsApp
+              Meld wedstrijd in de groep
             </button>
+          </div>
+
+          <div className="space-y-2 border-t pt-3">
+            <p className="text-sm text-green-900/70">
+              Of een link alleen voor deze wedstrijd.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => copy("groep", groupLink())}
+                className="rounded border border-green-300 px-4 py-2 text-sm font-semibold text-green-900"
+              >
+                {copied === "groep" ? "Gekopieerd!" : "Kopieer link"}
+              </button>
+              <button
+                onClick={() =>
+                  whatsApp(
+                    `${isHome ? "Thuiswedstrijd" : "Uitwedstrijd"} tegen ${opponentName} op ${longDate()}. Kun je? Geef het door via deze link: ${groupLink()}`,
+                  )
+                }
+                className="rounded border border-green-300 px-4 py-2 text-sm font-semibold text-green-900"
+              >
+                Deel via WhatsApp
+              </button>
+            </div>
           </div>
         </section>
       )}
