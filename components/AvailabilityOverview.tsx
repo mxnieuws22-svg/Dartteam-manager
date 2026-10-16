@@ -55,21 +55,6 @@ export default function AvailabilityOverview({ players, answers, me }: Props) {
 
   return (
     <div className="space-y-3 border-t pt-3">
-      <div
-        className="flex h-3 overflow-hidden rounded-full bg-green-900/10"
-        role="img"
-        aria-label={`${yes.length} kunnen, ${no.length} kunnen niet, ${open.length} nog niet gereageerd`}
-      >
-        <div
-          className="bg-green-700"
-          style={{ width: `${(yes.length / total) * 100}%` }}
-        />
-        <div
-          className="bg-red-600"
-          style={{ width: `${(no.length / total) * 100}%` }}
-        />
-      </div>
-
       <p className="text-sm">
         <span className="font-semibold text-green-700">
           {yes.length} kunnen
