@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { encodeToken } from "@/lib/links";
 import { createClient } from "@/lib/supabase/client";
 import PushToggle from "@/components/PushToggle";
 import { useIsAdmin } from "@/lib/useIsAdmin";
@@ -60,7 +61,7 @@ export default function SpelersPage() {
   }, [isAdmin]);
 
   function linkFor(p: Player) {
-    return `${window.location.origin}/ik/${tokens[p.id]}`;
+    return `${window.location.origin}/ik/${encodeToken(tokens[p.id])}`;
   }
 
   async function copyLink(p: Player) {
@@ -70,7 +71,7 @@ export default function SpelersPage() {
   }
 
   function groupUrl() {
-    return `${window.location.origin}/groep/${teamToken}`;
+    return `${window.location.origin}/groep/${encodeToken(teamToken)}`;
   }
 
   async function copyGroupLink() {

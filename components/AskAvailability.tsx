@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import AvailabilityOverview from "@/components/AvailabilityOverview";
+import { dateCode, encodeToken } from "@/lib/links";
 import { createClient } from "@/lib/supabase/client";
 
 type Player = { id: string; name: string; is_active?: boolean };
@@ -48,9 +49,9 @@ export default function AskAvailability({
   }, []);
 
   const groupLink = () =>
-    `${window.location.origin}/groep/${teamToken}?w=${matchId}`;
+    `${window.location.origin}/groep/${encodeToken(teamToken)}?w=${dateCode(matchDate)}`;
   const personalLink = (playerId: string) =>
-    `${window.location.origin}/ik/${tokens[playerId]}?w=${matchId}`;
+    `${window.location.origin}/ik/${encodeToken(tokens[playerId])}?w=${dateCode(matchDate)}`;
 
   const longDate = () =>
     new Date(matchDate).toLocaleDateString("nl-NL", { dateStyle: "full" });
