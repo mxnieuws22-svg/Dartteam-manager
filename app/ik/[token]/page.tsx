@@ -46,7 +46,14 @@ function Beschikbaarheid() {
       setState("invalid");
       return;
     }
-    setMe(data as Me);
+    const loaded = data as Me;
+    setMe(loaded);
+    try {
+      // De groepslink herkent hiermee wie je bent op dit toestel.
+      localStorage.setItem("dartteam-speler-naam", loaded.name);
+    } catch {
+      // opslaan is een gemak, geen vereiste
+    }
     setState("ok");
   }
 

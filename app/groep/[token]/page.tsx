@@ -20,6 +20,7 @@ type UpcomingMatch = {
 type Team = { players: Player[]; matches: UpcomingMatch[] };
 
 const STORAGE_KEY = "dartteam-speler";
+const NAME_KEY = "dartteam-speler-naam";
 
 export default function GroepPage() {
   return (
@@ -58,6 +59,17 @@ function Groep() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved && loaded.players.some((p) => p.id === saved)) {
         setPlayerId(saved);
+      } else {
+        // Eerder je persoonlijke link geopend op dit toestel: dan weten we wie je bent.
+        // Alleen als de naam precies één speler is, anders liever zelf laten kiezen.
+        const name = localStorage.getItem(NAME_KEY)?.trim().toLowerCase();
+        const matches = name
+          ? loaded.players.filter((p) => p.name.trim().toLowerCase() === name)
+          : [];
+        if (matches.length === 1) {
+          setPlayerId(matches[0].id);
+          localStorage.setItem(STORAGE_KEY, matches[0].id);
+        }
       }
     } catch {
       // opslaan van de keuze is een gemak, geen vereiste
