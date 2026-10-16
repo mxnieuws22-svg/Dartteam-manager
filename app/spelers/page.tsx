@@ -10,6 +10,7 @@ type Player = {
   id: string;
   name: string;
   is_reserve: boolean;
+  is_active: boolean;
 };
 
 export default function SpelersPage() {
@@ -26,7 +27,7 @@ export default function SpelersPage() {
   async function loadPlayers() {
     const { data, error } = await supabase
       .from("players")
-      .select("id, name, is_reserve")
+      .select("id, name, is_reserve, is_active")
       .order("is_reserve")
       .order("name");
 
@@ -84,6 +85,28 @@ export default function SpelersPage() {
     const text = `Geef via deze link aan of je kunt voor de komende wedstrijden van Darten met je Hart: ${groupUrl()}`;
     window.open(
       `https://wa.me/?text=${encodeURIComponent(text)}`,
+      "_blank",
+      "noopener",
+    );
+  }
+
+  // Actieve spelers met een persoonlijke link, voor de vaste lijst in de groep.
+  const withLink = players.filter((p) => p.is_active && tokens[p.id]);
+
+  function namesMessage() {
+    const lines = withLink.map((p) => `${p.name}: ${linkFor(p)}`);
+    return `Geef via je eigen naam aan of je kunt voor de wedstrijden van Darten met je Hart. Tik op jouw naam:\n\n${lines.join("\n")}\n\nDeze lijst blijft altijd werken, ook voor nieuwe wedstrijden. Zet dit bericht vast.`;
+  }
+
+  async function copyNames() {
+    await navigator.clipboard.writeText(namesMessage());
+    setCopied("namen");
+    setTimeout(() => setCopied(""), 2000);
+  }
+
+  function whatsappNames() {
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(namesMessage())}`,
       "_blank",
       "noopener",
     );
@@ -187,6 +210,32 @@ export default function SpelersPage() {
               className="rounded bg-green-700 px-4 py-2 text-sm font-semibold text-white"
             >
               Deel via WhatsApp
+            </button>
+          </div>
+        </section>
+      )}
+
+      {isAdmin && withLink.length > 0 && (
+        <section className="space-y-2 rounded-lg border bg-white p-4">
+          <h2 className="font-semibold">Vaste lijst met namen</h2>
+          <p className="text-sm text-green-900/70">
+            Eén bericht met per naam een eigen link. Zet het één keer vast in de
+            groep: iedereen tikt op zijn eigen naam en hoeft nooit meer een naam
+            te kiezen. De links werken voor alle wedstrijden. Let op: iedereen
+            in de groep ziet daarmee ook de links van de anderen.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={copyNames}
+              className="rounded border border-green-300 px-4 py-2 text-sm font-semibold text-green-900"
+            >
+              {copied === "namen" ? "Gekopieerd!" : "Kopieer lijst"}
+            </button>
+            <button
+              onClick={whatsappNames}
+              className="rounded bg-green-700 px-4 py-2 text-sm font-semibold text-white"
+            >
+              Deel lijst via WhatsApp
             </button>
           </div>
         </section>
