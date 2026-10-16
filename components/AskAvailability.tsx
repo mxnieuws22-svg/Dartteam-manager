@@ -14,6 +14,8 @@ type Props = {
   players: Player[];
   // Wat spelers al hebben doorgegeven voor deze wedstrijd (speler-id -> kan wel/niet).
   available: Record<string, boolean>;
+  // speler-id -> true bij "nog niet zeker"
+  maybe?: Record<string, boolean>;
 };
 
 // Voor de beheerder: de groepslink en de persoonlijke links om te vragen wie er kan bij één wedstrijd.
@@ -23,6 +25,7 @@ export default function AskAvailability({
   isHome,
   players,
   available,
+  maybe,
 }: Props) {
   const supabase = createClient();
   const [teamToken, setTeamToken] = useState("");
@@ -75,7 +78,9 @@ export default function AskAvailability({
 
   // Eén bericht voor de groep: per naam een eigen link, iedereen tikt op zijn eigen naam.
   function groupMessage(onlyOpen: boolean) {
-    const list = askable.filter((p) => !onlyOpen || !(p.id in available));
+    const list = askable.filter(
+      (p) => !onlyOpen || !(p.id in available) || maybe?.[p.id] === true,
+    );
     const lines = list.map((p) => `${p.name}: ${personalLink(p.id)}`);
     whatsApp(
       `${isHome ? "Thuiswedstrijd" : "Uitwedstrijd"} tegen ${opponentName} op ${longDate()}. Kun je? Tik op jouw eigen naam en geef het door:\n\n${lines.join("\n\n")}`,
@@ -90,7 +95,11 @@ export default function AskAvailability({
       {active.length > 0 && (
         <section className="space-y-3 rounded-lg border bg-white p-4">
           <h2 className="font-semibold">Wie kan er?</h2>
-          <AvailabilityOverview players={active} answers={available} />
+          <AvailabilityOverview
+            players={active}
+            answers={available}
+            maybe={maybe}
+          />
         </section>
       )}
 
@@ -169,21 +178,25 @@ export default function AskAvailability({
               </button>
               <button
                 onClick={() => groupMessage(true)}
-                disabled={askable.every((p) => p.id in available)}
+                disabled={askable.every(
+                  (p) => p.id in available && maybe?.[p.id] !== true,
+                )}
                 className="rounded border border-green-300 px-4 py-2 text-sm font-semibold text-green-900 disabled:opacity-40"
               >
-                Alleen wie nog open staat
+                Alleen wie nog open staat of twijfelt
               </button>
             </div>
           </div>
           <ul className="mt-2 space-y-2">
             {askable.map((p) => {
               const answer =
-                p.id in available
-                  ? available[p.id]
-                    ? "kan"
-                    : "kan niet"
-                  : "nog niet gereageerd";
+                maybe?.[p.id] === true && !available[p.id]
+                  ? "nog niet zeker"
+                  : p.id in available
+                    ? available[p.id]
+                      ? "kan"
+                      : "kan niet"
+                    : "nog niet gereageerd";
               return (
                 <li
                   key={p.id}
@@ -197,7 +210,9 @@ export default function AskAvailability({
                           ? "text-green-700"
                           : answer === "kan niet"
                             ? "text-red-600"
-                            : "text-green-900/60"
+                            : answer === "nog niet zeker"
+                              ? "text-amber-700"
+                              : "text-green-900/60"
                       }`}
                     >
                       {answer}

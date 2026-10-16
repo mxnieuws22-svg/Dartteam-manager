@@ -4,6 +4,8 @@ type Props = {
   players: Person[];
   // speler-id -> kan wel (true) of niet (false); wie ontbreekt heeft nog niet gereageerd
   answers: Record<string, boolean>;
+  // speler-id -> true als de speler "nog niet zeker" koos (komt dan ook in answers voor als false)
+  maybe?: Record<string, boolean>;
   // optioneel: de speler die de pagina bekijkt, wordt vet getoond
   me?: string;
 };
@@ -45,9 +47,17 @@ function Group({
 }
 
 // Wie kan, wie kan niet en wie heeft nog niet gereageerd, met een balk en aantallen.
-export default function AvailabilityOverview({ players, answers, me }: Props) {
+export default function AvailabilityOverview({
+  players,
+  answers,
+  maybe,
+  me,
+}: Props) {
+  const isMaybe = (p: Person) =>
+    maybe?.[p.id] === true && answers[p.id] !== true;
   const yes = players.filter((p) => answers[p.id] === true);
-  const no = players.filter((p) => answers[p.id] === false);
+  const unsure = players.filter(isMaybe);
+  const no = players.filter((p) => answers[p.id] === false && !isMaybe(p));
   const open = players.filter((p) => answers[p.id] === undefined);
   const total = players.length;
 
@@ -63,6 +73,14 @@ export default function AvailabilityOverview({ players, answers, me }: Props) {
         <span className="font-semibold text-red-600">
           {no.length} kunnen niet
         </span>
+        {unsure.length > 0 && (
+          <>
+            {" · "}
+            <span className="font-semibold text-amber-700">
+              {unsure.length} nog niet zeker
+            </span>
+          </>
+        )}
         {" · "}
         <span className="text-green-900/60">{open.length} nog open</span>
       </p>
@@ -79,6 +97,13 @@ export default function AvailabilityOverview({ players, answers, me }: Props) {
         color="text-red-600"
         people={no}
         chip="bg-red-100 text-red-900"
+        me={me}
+      />
+      <Group
+        title="Nog niet zeker"
+        color="text-amber-700"
+        people={unsure}
+        chip="bg-amber-100 text-amber-900"
         me={me}
       />
       <Group

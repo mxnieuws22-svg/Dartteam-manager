@@ -1,6 +1,11 @@
 -- Persoonlijke links waarmee spelers zonder account kunnen aangeven of ze kunnen.
 -- Draai dit script één keer in de SQL Editor van het Supabase-project Dartteam.
 
+-- Derde antwoord "nog niet zeker": een extra veld bij de beschikbaarheid. Bij "nog niet zeker" staat
+-- is_available op false en is_maybe op true, zodat het nergens als "kan" meetelt.
+alter table public.availability
+  add column if not exists is_maybe boolean not null default false;
+
 -- 1. Geheime token per speler. Alleen ingelogde beheerders kunnen deze tabel lezen;
 --    bezoekers kunnen er niet bij (de tokens staan dus niet in de openbare spelerslijst).
 create table if not exists public.player_tokens (
@@ -73,7 +78,8 @@ begin
           'match_date', m.match_date,
           'is_home', m.is_home,
           'location', m.location,
-          'is_available', a.is_available
+          'is_available', a.is_available,
+          'is_maybe', a.is_maybe
         ) order by m.match_date
       )
       from public.matches m
@@ -86,10 +92,14 @@ end;
 $$;
 
 -- 3. Een speler kan alleen zijn eigen beschikbaarheid voor een komende wedstrijd zetten.
+-- De oude versie (zonder p_maybe) weghalen, anders zijn er twee functies met dezelfde naam.
+drop function if exists public.set_my_availability(uuid, uuid, boolean);
+
 create or replace function public.set_my_availability(
   p_token uuid,
   p_match_id uuid,
-  p_available boolean
+  p_available boolean,
+  p_maybe boolean default false
 )
 returns void
 language plpgsql
@@ -115,15 +125,15 @@ begin
     raise exception 'Wedstrijd niet beschikbaar';
   end if;
 
-  insert into public.availability (match_id, player_id, is_available)
-  values (p_match_id, v_player_id, p_available)
+  insert into public.availability (match_id, player_id, is_available, is_maybe)
+  values (p_match_id, v_player_id, p_available and not p_maybe, p_maybe)
   on conflict (match_id, player_id)
-  do update set is_available = excluded.is_available;
+  do update set is_available = excluded.is_available, is_maybe = excluded.is_maybe;
 end;
 $$;
 
 revoke all on function public.my_availability(uuid) from public;
-revoke all on function public.set_my_availability(uuid, uuid, boolean) from public;
+revoke all on function public.set_my_availability(uuid, uuid, boolean, boolean) from public;
 revoke all on function public.create_player_token() from public;
 grant execute on function public.my_availability(uuid) to anon, authenticated;
-grant execute on function public.set_my_availability(uuid, uuid, boolean) to anon, authenticated;
+grant execute on function public.set_my_availability(uuid, uuid, boolean, boolean) to anon, authenticated;
