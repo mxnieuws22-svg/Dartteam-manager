@@ -78,7 +78,7 @@ export default function AskAvailability({
     const list = askable.filter((p) => !onlyOpen || !(p.id in available));
     const lines = list.map((p) => `${p.name}: ${personalLink(p.id)}`);
     whatsApp(
-      `${isHome ? "Thuiswedstrijd" : "Uitwedstrijd"} tegen ${opponentName} op ${longDate()}. Kun je? Tik op jouw eigen naam en geef het door:\n\n${lines.join("\n")}`,
+      `${isHome ? "Thuiswedstrijd" : "Uitwedstrijd"} tegen ${opponentName} op ${longDate()}. Kun je? Tik op jouw eigen naam en geef het door:\n\n${lines.join("\n\n")}`,
     );
   }
 
