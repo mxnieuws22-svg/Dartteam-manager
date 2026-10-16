@@ -8,6 +8,7 @@ type PushInfo = {
   opponent: string | null;
   match_date: string;
   is_available: boolean | null;
+  is_maybe?: boolean;
   subscriptions: Subscription[];
 };
 
@@ -71,7 +72,11 @@ export async function POST(request: Request) {
     month: "long",
   });
   const payload = JSON.stringify({
-    title: info.is_available ? `${info.player} kan` : `${info.player} kan niet`,
+    title: info.is_maybe
+      ? `${info.player} weet het nog niet`
+      : info.is_available
+        ? `${info.player} kan`
+        : `${info.player} kan niet`,
     body: `${info.opponent || "Wedstrijd"} · ${date}`,
     url: `/wedstrijden/${matchId}`,
   });

@@ -41,6 +41,7 @@ export default function Home() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [roles, setRoles] = useState<Record<string, Role>>({});
   const [availability, setAvailability] = useState<Record<string, boolean>>({});
+  const [maybe, setMaybe] = useState<Record<string, boolean>>({});
   const [error, setError] = useState("");
 
   async function load() {
@@ -93,6 +94,21 @@ export default function Home() {
     }
 
     if (next) {
+      // "Nog niet zeker" apart ophalen: bestaat het veld nog niet (SQL niet bijgewerkt), dan blijft dit leeg.
+      supabase
+        .from("availability")
+        .select("player_id, is_maybe")
+        .eq("match_id", next.id)
+        .then(({ data }) =>
+          setMaybe(
+            Object.fromEntries(
+              (data ?? [])
+                .filter((r) => r.is_maybe)
+                .map((r) => [r.player_id, true]),
+            ),
+          ),
+        );
+
       const [playersRes, lineupRes, availabilityRes] = await Promise.all([
         supabase
           .from("players")
@@ -309,6 +325,7 @@ export default function Home() {
           isHome={match.is_home}
           players={players}
           available={availability}
+          maybe={maybe}
         />
       )}
 

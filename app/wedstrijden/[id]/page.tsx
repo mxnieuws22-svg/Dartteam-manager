@@ -39,6 +39,7 @@ function WedstrijdDetail() {
   const [match, setMatch] = useState<Match | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [available, setAvailable] = useState<Record<string, boolean>>({});
+  const [maybe, setMaybe] = useState<Record<string, boolean>>({});
   const [lineup, setLineup] = useState<Record<string, Role>>({});
   const [scoreFor, setScoreFor] = useState("");
   const [scoreAgainst, setScoreAgainst] = useState("");
@@ -101,6 +102,20 @@ function WedstrijdDetail() {
         (a.data ?? []).map((r) => [r.player_id, r.is_available]),
       ),
     );
+    // "Nog niet zeker" apart ophalen: bestaat het veld nog niet (SQL niet bijgewerkt), dan blijft dit leeg.
+    supabase
+      .from("availability")
+      .select("player_id, is_maybe")
+      .eq("match_id", id)
+      .then(({ data }) =>
+        setMaybe(
+          Object.fromEntries(
+            (data ?? [])
+              .filter((r) => r.is_maybe)
+              .map((r) => [r.player_id, true]),
+          ),
+        ),
+      );
     setLineup(
       Object.fromEntries(
         (l.data ?? []).map((r) => [
@@ -118,15 +133,27 @@ function WedstrijdDetail() {
 
   async function setAvailability(playerId: string, isAvailable: boolean) {
     setError("");
-    const { error } = await supabase
-      .from("availability")
-      .upsert({ match_id: id, player_id: playerId, is_available: isAvailable });
+    // Een handmatige keuze haalt ook "nog niet zeker" weg. Bestaat dat veld nog niet, dan zonder.
+    let { error } = await supabase.from("availability").upsert({
+      match_id: id,
+      player_id: playerId,
+      is_available: isAvailable,
+      is_maybe: false,
+    });
+    if (error) {
+      ({ error } = await supabase.from("availability").upsert({
+        match_id: id,
+        player_id: playerId,
+        is_available: isAvailable,
+      }));
+    }
 
     if (error) {
       setError("Beschikbaarheid opslaan mislukt.");
       return;
     }
     setAvailable((prev) => ({ ...prev, [playerId]: isAvailable }));
+    setMaybe((prev) => ({ ...prev, [playerId]: false }));
   }
 
   async function saveMatch(e: React.FormEvent) {
@@ -235,6 +262,7 @@ function WedstrijdDetail() {
           isHome={match.is_home}
           players={players}
           available={available}
+          maybe={maybe}
         />
       )}
 

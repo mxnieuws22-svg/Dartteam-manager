@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import AnswerButtons, {
+  answerArgs,
+  toAnswer,
+  type Answer,
+} from "@/components/AnswerButtons";
 import AvailabilityOverview from "@/components/AvailabilityOverview";
 import { decodeToken, encodeToken, isMatch } from "@/lib/links";
 import { createClient } from "@/lib/supabase/client";
@@ -16,6 +21,7 @@ type UpcomingMatch = {
   is_home: boolean;
   location: string | null;
   availability: Record<string, boolean>;
+  maybe?: Record<string, boolean>;
 };
 
 type Team = { players: Player[]; matches: UpcomingMatch[] };
@@ -94,13 +100,13 @@ function Groep() {
     }
   }
 
-  async function answer(matchId: string, available: boolean) {
+  async function answer(matchId: string, given: Answer) {
     setError("");
     const { error } = await supabase.rpc("set_team_availability", {
       p_token: token,
       p_player_id: playerId,
       p_match_id: matchId,
-      p_available: available,
+      ...answerArgs(given),
     });
 
     if (error) {
@@ -121,7 +127,11 @@ function Groep() {
               m.id === matchId
                 ? {
                     ...m,
-                    availability: { ...m.availability, [playerId]: available },
+                    availability: {
+                      ...m.availability,
+                      [playerId]: given === "yes",
+                    },
+                    maybe: { ...m.maybe, [playerId]: given === "maybe" },
                   }
                 : m,
             ),
@@ -186,7 +196,9 @@ function Groep() {
           const date = new Date(m.match_date).toLocaleDateString("nl-NL", {
             dateStyle: "full",
           });
-          const mine = playerId ? m.availability[playerId] : undefined;
+          const mine = playerId
+            ? toAnswer(m.availability[playerId], m.maybe?.[playerId])
+            : undefined;
           return (
             <li key={m.id} className="space-y-3 rounded-lg border bg-white p-4">
               <div>
@@ -198,33 +210,15 @@ function Groep() {
                   {m.location && ` · ${m.location}`}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  disabled={!playerId}
-                  onClick={() => answer(m.id, true)}
-                  className={`rounded px-4 py-3 font-semibold disabled:opacity-40 ${
-                    mine === true
-                      ? "bg-green-700 text-white"
-                      : "border border-green-300 text-green-900"
-                  }`}
-                >
-                  Ik kan
-                </button>
-                <button
-                  disabled={!playerId}
-                  onClick={() => answer(m.id, false)}
-                  className={`rounded px-4 py-3 font-semibold disabled:opacity-40 ${
-                    mine === false
-                      ? "bg-red-600 text-white"
-                      : "border border-green-300 text-green-900"
-                  }`}
-                >
-                  Ik kan niet
-                </button>
-              </div>
+              <AnswerButtons
+                value={mine}
+                disabled={!playerId}
+                onAnswer={(given) => answer(m.id, given)}
+              />
               <AvailabilityOverview
                 players={team.players}
                 answers={m.availability}
+                maybe={m.maybe}
                 me={playerId}
               />
             </li>

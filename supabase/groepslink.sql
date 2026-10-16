@@ -2,6 +2,11 @@
 -- Draai dit script één keer in de SQL Editor van het Supabase-project Dartteam.
 -- Het werkt los van de persoonlijke links (beschikbaarheid_links.sql).
 
+-- Derde antwoord "nog niet zeker": een extra veld bij de beschikbaarheid. Bij "nog niet zeker" staat
+-- is_available op false en is_maybe op true, zodat het nergens als "kan" meetelt.
+alter table public.availability
+  add column if not exists is_maybe boolean not null default false;
+
 -- 1. Eén geheime groepstoken. Alleen ingelogde beheerders kunnen die lezen.
 create table if not exists public.team_link (
   id boolean primary key default true check (id),
@@ -50,6 +55,11 @@ begin
             select jsonb_object_agg(a.player_id::text, a.is_available)
             from public.availability a
             where a.match_id = m.id
+          ), '{}'::jsonb),
+          'maybe', coalesce((
+            select jsonb_object_agg(a.player_id::text, true)
+            from public.availability a
+            where a.match_id = m.id and a.is_maybe
           ), '{}'::jsonb)
         ) order by m.match_date
       )
@@ -61,11 +71,15 @@ end;
 $$;
 
 -- 3. Beschikbaarheid van een actieve speler voor een komende geplande wedstrijd zetten.
+-- De oude versie (zonder p_maybe) weghalen, anders zijn er twee functies met dezelfde naam.
+drop function if exists public.set_team_availability(uuid, uuid, uuid, boolean);
+
 create or replace function public.set_team_availability(
   p_token uuid,
   p_player_id uuid,
   p_match_id uuid,
-  p_available boolean
+  p_available boolean,
+  p_maybe boolean default false
 )
 returns void
 language plpgsql
@@ -90,14 +104,14 @@ begin
     raise exception 'Wedstrijd niet beschikbaar';
   end if;
 
-  insert into public.availability (match_id, player_id, is_available)
-  values (p_match_id, p_player_id, p_available)
+  insert into public.availability (match_id, player_id, is_available, is_maybe)
+  values (p_match_id, p_player_id, p_available and not p_maybe, p_maybe)
   on conflict (match_id, player_id)
-  do update set is_available = excluded.is_available;
+  do update set is_available = excluded.is_available, is_maybe = excluded.is_maybe;
 end;
 $$;
 
 revoke all on function public.team_availability(uuid) from public;
-revoke all on function public.set_team_availability(uuid, uuid, uuid, boolean) from public;
+revoke all on function public.set_team_availability(uuid, uuid, uuid, boolean, boolean) from public;
 grant execute on function public.team_availability(uuid) to anon, authenticated;
-grant execute on function public.set_team_availability(uuid, uuid, uuid, boolean) to anon, authenticated;
+grant execute on function public.set_team_availability(uuid, uuid, uuid, boolean, boolean) to anon, authenticated;

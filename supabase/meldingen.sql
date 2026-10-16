@@ -2,6 +2,11 @@
 -- Draai dit script één keer in de SQL Editor van het Supabase-project Dartteam.
 -- Daarna moet nog één geheim woord in de database en in Vercel worden gezet (zie de uitleg bij de PR).
 
+-- Derde antwoord "nog niet zeker": een extra veld bij de beschikbaarheid. Bij "nog niet zeker" staat
+-- is_available op false en is_maybe op true, zodat het nergens als "kan" meetelt.
+alter table public.availability
+  add column if not exists is_maybe boolean not null default false;
+
 -- 1. Telefoons die meldingen willen ontvangen. Alleen ingelogde beheerders hebben toegang.
 create table if not exists public.push_subscriptions (
   endpoint text primary key,
@@ -48,6 +53,7 @@ declare
   v_opponent text;
   v_date date;
   v_available boolean;
+  v_maybe boolean;
 begin
   if not exists (select 1 from public.push_config where secret = p_secret) then
     return null;
@@ -70,7 +76,7 @@ begin
 
   select name into v_name from public.players where id = v_player_id;
   select opponent, match_date into v_opponent, v_date from public.matches where id = p_match_id;
-  select is_available into v_available from public.availability
+  select is_available, is_maybe into v_available, v_maybe from public.availability
     where match_id = p_match_id and player_id = v_player_id;
 
   if v_name is null or v_date is null then
@@ -82,6 +88,7 @@ begin
     'opponent', v_opponent,
     'match_date', v_date,
     'is_available', v_available,
+    'is_maybe', coalesce(v_maybe, false),
     'subscriptions', coalesce((
       select jsonb_agg(jsonb_build_object('endpoint', endpoint, 'p256dh', p256dh, 'auth', auth))
       from public.push_subscriptions

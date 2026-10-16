@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import AnswerButtons, {
+  answerArgs,
+  toAnswer,
+  type Answer,
+} from "@/components/AnswerButtons";
 import { decodeToken, encodeToken, isMatch } from "@/lib/links";
 import { createClient } from "@/lib/supabase/client";
 
@@ -13,6 +18,7 @@ type UpcomingMatch = {
   is_home: boolean;
   location: string | null;
   is_available: boolean | null;
+  is_maybe?: boolean | null;
 };
 
 type Me = { name: string; matches: UpcomingMatch[] };
@@ -65,12 +71,12 @@ function Beschikbaarheid() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  async function answer(matchId: string, available: boolean) {
+  async function answer(matchId: string, given: Answer) {
     setError("");
     const { error } = await supabase.rpc("set_my_availability", {
       p_token: token,
       p_match_id: matchId,
-      p_available: available,
+      ...answerArgs(given),
     });
 
     if (error) {
@@ -88,7 +94,13 @@ function Beschikbaarheid() {
         ? {
             ...prev,
             matches: prev.matches.map((m) =>
-              m.id === matchId ? { ...m, is_available: available } : m,
+              m.id === matchId
+                ? {
+                    ...m,
+                    is_available: given === "yes",
+                    is_maybe: given === "maybe",
+                  }
+                : m,
             ),
           }
         : prev,
@@ -142,28 +154,10 @@ function Beschikbaarheid() {
                   {m.location && ` · ${m.location}`}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => answer(m.id, true)}
-                  className={`rounded px-4 py-3 font-semibold ${
-                    m.is_available === true
-                      ? "bg-green-700 text-white"
-                      : "border border-green-300 text-green-900"
-                  }`}
-                >
-                  Ik kan
-                </button>
-                <button
-                  onClick={() => answer(m.id, false)}
-                  className={`rounded px-4 py-3 font-semibold ${
-                    m.is_available === false
-                      ? "bg-red-600 text-white"
-                      : "border border-green-300 text-green-900"
-                  }`}
-                >
-                  Ik kan niet
-                </button>
-              </div>
+              <AnswerButtons
+                value={toAnswer(m.is_available, m.is_maybe)}
+                onAnswer={(given) => answer(m.id, given)}
+              />
               {m.is_available === null && (
                 <p className="text-sm text-green-900/60">
                   Je hebt nog niet gereageerd.
