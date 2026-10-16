@@ -70,6 +70,15 @@ export default function AskAvailability({
     );
   }
 
+  // Eén bericht voor de groep: per naam een eigen link, iedereen tikt op zijn eigen naam.
+  function groupMessage(onlyOpen: boolean) {
+    const list = askable.filter((p) => !onlyOpen || !(p.id in available));
+    const lines = list.map((p) => `${p.name}: ${personalLink(p.id)}`);
+    whatsApp(
+      `${isHome ? "Thuiswedstrijd" : "Uitwedstrijd"} tegen ${opponentName} op ${longDate()}. Kun je? Tik op jouw eigen naam en geef het door:\n\n${lines.join("\n")}`,
+    );
+  }
+
   const active = players.filter((p) => p.is_active !== false);
   const askable = active.filter((p) => tokens[p.id]);
 
@@ -119,6 +128,31 @@ export default function AskAvailability({
             Elke speler heeft een eigen link voor alleen deze wedstrijd. Handig
             om iemand te herinneren die nog niet gereageerd heeft.
           </p>
+          <div className="mt-3 space-y-2 rounded border border-green-300 p-3">
+            <p className="text-sm font-semibold">
+              In één bericht naar de groep
+            </p>
+            <p className="text-sm text-green-900/70">
+              Eén bericht met per naam een eigen link. Iedereen tikt op zijn
+              eigen naam en kan direct antwoorden. Let op: iedereen in de groep
+              ziet daarmee ook de links van de anderen.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => groupMessage(false)}
+                className="rounded bg-green-700 px-4 py-2 text-sm font-semibold text-white"
+              >
+                Iedereen
+              </button>
+              <button
+                onClick={() => groupMessage(true)}
+                disabled={askable.every((p) => p.id in available)}
+                className="rounded border border-green-300 px-4 py-2 text-sm font-semibold text-green-900 disabled:opacity-40"
+              >
+                Alleen wie nog open staat
+              </button>
+            </div>
+          </div>
           <ul className="mt-2 space-y-2">
             {askable.map((p) => {
               const answer =
