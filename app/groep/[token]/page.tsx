@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import AvailabilityOverview from "@/components/AvailabilityOverview";
 import { createClient } from "@/lib/supabase/client";
 
 type Player = { id: string; name: string };
@@ -131,11 +132,6 @@ function Groep() {
   const single = only ? team.matches.find((m) => m.id === only) : undefined;
   const shown = single ? [single] : team.matches;
 
-  const names = (match: UpcomingMatch, value: boolean | undefined) =>
-    team.players
-      .filter((p) => match.availability[p.id] === value)
-      .map((p) => p.name);
-
   return (
     <main className="mx-auto max-w-2xl space-y-6 p-4">
       <div>
@@ -175,9 +171,6 @@ function Groep() {
             dateStyle: "full",
           });
           const mine = playerId ? m.availability[playerId] : undefined;
-          const yes = names(m, true);
-          const no = names(m, false);
-          const open = names(m, undefined);
           return (
             <li key={m.id} className="space-y-3 rounded-lg border bg-white p-4">
               <div>
@@ -213,22 +206,11 @@ function Groep() {
                   Ik kan niet
                 </button>
               </div>
-              <div className="space-y-1 border-t pt-3 text-sm">
-                <p>
-                  <span className="font-semibold text-green-700">Kunnen:</span>{" "}
-                  {yes.length > 0 ? yes.join(", ") : "-"}
-                </p>
-                <p>
-                  <span className="font-semibold text-red-600">
-                    Kunnen niet:
-                  </span>{" "}
-                  {no.length > 0 ? no.join(", ") : "-"}
-                </p>
-                <p className="text-green-900/60">
-                  <span className="font-semibold">Nog niet gereageerd:</span>{" "}
-                  {open.length > 0 ? open.join(", ") : "-"}
-                </p>
-              </div>
+              <AvailabilityOverview
+                players={team.players}
+                answers={m.availability}
+                me={playerId}
+              />
             </li>
           );
         })}
