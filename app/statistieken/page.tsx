@@ -5,6 +5,12 @@ import { createClient } from "@/lib/supabase/client";
 
 type Row = { name: string; starts: number; active: boolean };
 
+type Highlight = {
+  player_id: string;
+  kind: "180" | "finish";
+  value: number | null;
+};
+
 type LineupRow = {
   player_id: string;
   matches: { match_date: string; status: string } | null;
@@ -14,6 +20,12 @@ export default function StatistiekenPage() {
   const supabase = createClient();
   const [rows, setRows] = useState<Row[]>([]);
   const [matchCount, setMatchCount] = useState(0);
+  const [oneEighties, setOneEighties] = useState<
+    { name: string; count: number }[]
+  >([]);
+  const [finishes, setFinishes] = useState<
+    { name: string; value: number }[]
+  >([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");
 
@@ -59,6 +71,25 @@ export default function StatistiekenPage() {
         .sort((a, b) => b.starts - a.starts || a.name.localeCompare(b.name))
     );
     setLoaded(true);
+
+    // Bestaat de tabel nog niet (SQL niet gedraaid), dan blijft dit leeg.
+    const { data: hl } = await supabase
+      .from("highlights")
+      .select("player_id, kind, value");
+    const nameOf = new Map((playersRes.data ?? []).map((p) => [p.id, p.name]));
+    const counts: Record<string, number> = {};
+    const fin: { name: string; value: number }[] = [];
+    for (const h of (hl as Highlight[] | null) ?? []) {
+      const name = nameOf.get(h.player_id) ?? "Onbekend";
+      if (h.kind === "180") counts[name] = (counts[name] ?? 0) + 1;
+      else if (h.value) fin.push({ name, value: h.value });
+    }
+    setOneEighties(
+      Object.entries(counts)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
+    );
+    setFinishes(fin.sort((a, b) => b.value - a.value).slice(0, 10));
   }
 
   useEffect(() => {
@@ -107,6 +138,40 @@ export default function StatistiekenPage() {
           </li>
         ))}
       </ul>
+
+      {oneEighties.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-lg font-bold">180&apos;s</h2>
+          <ul className="space-y-2">
+            {oneEighties.map((r) => (
+              <li
+                key={r.name}
+                className="flex items-center justify-between rounded-lg border bg-white p-3"
+              >
+                <span className="font-semibold">{r.name}</span>
+                <span className="font-bold">{r.count}x</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {finishes.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-lg font-bold">Hoogste finishes</h2>
+          <ul className="space-y-2">
+            {finishes.map((r, i) => (
+              <li
+                key={i}
+                className="flex items-center justify-between rounded-lg border bg-white p-3"
+              >
+                <span className="font-semibold">{r.name}</span>
+                <span className="font-bold">{r.value}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </main>
   );
 }

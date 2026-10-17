@@ -23,6 +23,12 @@ type Match = {
   score_against: number | null;
 };
 type Role = "none" | "starter" | "reserve";
+type Highlight = {
+  id: string;
+  player_id: string;
+  kind: "180" | "finish";
+  value: number | null;
+};
 
 export default function WedstrijdPage() {
   return (
@@ -47,6 +53,10 @@ function WedstrijdDetail() {
   const [editDate, setEditDate] = useState("");
   const [editIsHome, setEditIsHome] = useState(true);
   const [editLocation, setEditLocation] = useState("");
+  const [highlights, setHighlights] = useState<Highlight[]>([]);
+  const [hlPlayer, setHlPlayer] = useState("");
+  const [hlKind, setHlKind] = useState<"180" | "finish">("180");
+  const [hlValue, setHlValue] = useState("");
   const [error, setError] = useState("");
   const [upcoming, setUpcoming] = useState(false);
 
@@ -124,6 +134,13 @@ function WedstrijdDetail() {
         ]),
       ),
     );
+    // 180's en finishes apart ophalen: bestaat de tabel nog niet (SQL niet gedraaid), dan blijft dit leeg.
+    supabase
+      .from("highlights")
+      .select("id, player_id, kind, value")
+      .eq("match_id", id)
+      .order("created_at")
+      .then(({ data }) => setHighlights((data as Highlight[] | null) ?? []));
   }
 
   useEffect(() => {
@@ -229,6 +246,54 @@ function WedstrijdDetail() {
     setLineup((prev) => ({ ...prev, [playerId]: role }));
   }
 
+  async function addHighlight(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    if (!hlPlayer) {
+      setError("Kies eerst een speler.");
+      return;
+    }
+    const value = hlKind === "finish" ? Number(hlValue) : null;
+    if (hlKind === "finish" && !(value && value >= 100 && value <= 170)) {
+      setError("Een hoge finish ligt tussen 100 en 170.");
+      return;
+    }
+    const { data, error } = await supabase
+      .from("highlights")
+      .insert({ match_id: id, player_id: hlPlayer, kind: hlKind, value })
+      .select("id, player_id, kind, value")
+      .single();
+    if (error || !data) {
+      setError(
+        "Opslaan mislukt. Is supabase/hoogtepunten.sql al gedraaid in Supabase?",
+      );
+      return;
+    }
+    setHighlights((prev) => [...prev, data as Highlight]);
+    setHlValue("");
+  }
+
+  async function removeHighlight(highlightId: string) {
+    setError("");
+    const { error } = await supabase
+      .from("highlights")
+      .delete()
+      .eq("id", highlightId);
+    if (error) {
+      setError("Verwijderen mislukt.");
+      return;
+    }
+    setHighlights((prev) => prev.filter((h) => h.id !== highlightId));
+  }
+
+  const nameOf = (playerId: string) =>
+    players.find((p) => p.id === playerId)?.name ?? "Onbekend";
+  // Eerst wie er speelde, daarna de rest.
+  const hlCandidates = [
+    ...players.filter((p) => lineup[p.id]),
+    ...players.filter((p) => !lineup[p.id] && p.is_active),
+  ];
+
   const starters = players.filter((p) => lineup[p.id] === "starter");
   const reserves = players.filter((p) => lineup[p.id] === "reserve");
 
@@ -306,6 +371,83 @@ function WedstrijdDetail() {
             </div>
           )}
         </div>
+      )}
+
+      {(highlights.length > 0 || isAdmin) && (
+        <section className="space-y-2 rounded border bg-white p-3">
+          <h2 className="font-semibold">180&apos;s en hoge finishes</h2>
+          {highlights.length === 0 && (
+            <p className="text-sm text-green-900/60">Nog niets ingevuld.</p>
+          )}
+          <ul className="space-y-1">
+            {highlights.map((h) => (
+              <li
+                key={h.id}
+                className="flex items-center justify-between gap-2 rounded bg-green-50 px-2 py-1"
+              >
+                <span>
+                  <span className="font-semibold">{nameOf(h.player_id)}</span>
+                  {" · "}
+                  {h.kind === "180" ? "180" : `finish ${h.value}`}
+                </span>
+                {isAdmin && (
+                  <button
+                    onClick={() => removeHighlight(h.id)}
+                    aria-label="Verwijderen"
+                    className="px-2 text-red-600"
+                  >
+                    ×
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+          {isAdmin && (
+            <form onSubmit={addHighlight} className="flex flex-wrap gap-2">
+              <select
+                value={hlPlayer}
+                onChange={(e) => setHlPlayer(e.target.value)}
+                aria-label="Speler"
+                className="rounded border border-green-300 p-2 text-gray-900"
+              >
+                <option value="">Speler...</option>
+                {hlCandidates.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={hlKind}
+                onChange={(e) => setHlKind(e.target.value as "180" | "finish")}
+                aria-label="Soort"
+                className="rounded border border-green-300 p-2 text-gray-900"
+              >
+                <option value="180">180</option>
+                <option value="finish">Hoge finish</option>
+              </select>
+              {hlKind === "finish" && (
+                <input
+                  type="number"
+                  min={100}
+                  max={170}
+                  inputMode="numeric"
+                  aria-label="Finish"
+                  placeholder="100-170"
+                  value={hlValue}
+                  onChange={(e) => setHlValue(e.target.value)}
+                  className="w-24 rounded border border-green-300 p-2 text-gray-900"
+                />
+              )}
+              <button
+                type="submit"
+                className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
+              >
+                Toevoegen
+              </button>
+            </form>
+          )}
+        </section>
       )}
 
       {isAdmin && (
