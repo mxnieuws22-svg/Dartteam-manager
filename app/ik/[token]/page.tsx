@@ -3,11 +3,8 @@
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import AnswerButtons, {
-  answerArgs,
-  toAnswer,
-  type Answer,
-} from "@/components/AnswerButtons";
+import { answerArgs, toAnswer, type Answer } from "@/components/AnswerButtons";
+import MatchAnswer from "@/components/MatchAnswer";
 import { decodeToken, encodeToken, isMatch } from "@/lib/links";
 import { createClient } from "@/lib/supabase/client";
 
@@ -19,6 +16,12 @@ type UpcomingMatch = {
   location: string | null;
   is_available: boolean | null;
   is_maybe?: boolean | null;
+};
+
+type Overview = {
+  players: { id: string; name: string }[];
+  answers: Record<string, Record<string, boolean>>;
+  maybe: Record<string, Record<string, boolean>>;
 };
 
 type Me = { name: string; matches: UpcomingMatch[] };
@@ -39,7 +42,46 @@ function Beschikbaarheid() {
   const supabase = createClient();
   const [me, setMe] = useState<Me | null>(null);
   const [state, setState] = useState<"loading" | "ok" | "invalid">("loading");
+  const [overview, setOverview] = useState<Overview>({
+    players: [],
+    answers: {},
+    maybe: {},
+  });
   const [error, setError] = useState("");
+
+  // Wie kan er wel en niet, voor het overzicht na het antwoord. Mislukt dit, dan blijft het overzicht leeg.
+  async function loadOverview(matchIds: string[]) {
+    if (matchIds.length === 0) return;
+    const [p, a, mb] = await Promise.all([
+      supabase.from("players").select("id, name").eq("is_active", true),
+      supabase
+        .from("availability")
+        .select("match_id, player_id, is_available")
+        .in("match_id", matchIds),
+      supabase
+        .from("availability")
+        .select("match_id, player_id")
+        .in("match_id", matchIds)
+        .eq("is_maybe", true),
+    ]);
+    const group = (
+      rows:
+        | { match_id: string; player_id: string; is_available?: boolean }[]
+        | null,
+      value: (r: { is_available?: boolean }) => boolean,
+    ) => {
+      const out: Record<string, Record<string, boolean>> = {};
+      for (const r of rows ?? []) {
+        (out[r.match_id] ??= {})[r.player_id] = value(r);
+      }
+      return out;
+    };
+    setOverview({
+      players: (p.data ?? []).sort((x, y) => x.name.localeCompare(y.name)),
+      answers: group(a.data, (r) => r.is_available === true),
+      maybe: group(mb.data, () => true),
+    });
+  }
 
   async function load() {
     const { data, error } = await supabase.rpc("my_availability", {
@@ -64,6 +106,7 @@ function Beschikbaarheid() {
       // opslaan is een gemak, geen vereiste
     }
     setState("ok");
+    loadOverview(loaded.matches.map((m) => m.id));
   }
 
   useEffect(() => {
@@ -89,6 +132,7 @@ function Beschikbaarheid() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ token, matchId }),
     }).catch(() => {});
+    loadOverview([matchId]);
     setMe((prev) =>
       prev
         ? {
@@ -123,6 +167,11 @@ function Beschikbaarheid() {
   // Met ?w=<wedstrijd> alleen die ene wedstrijd tonen, zolang die nog komt.
   const selected = only ? me.matches.filter((m) => isMatch(m, only)) : [];
   const single = selected[0];
+  // Wie ben ik in de lijst? Alleen als de naam precies één speler is.
+  const mine = overview.players.filter(
+    (p) => p.name.trim().toLowerCase() === me.name.trim().toLowerCase(),
+  );
+  const myId = mine.length === 1 ? mine[0].id : undefined;
   const shown = selected.length > 0 ? selected : me.matches;
 
   return (
@@ -154,9 +203,13 @@ function Beschikbaarheid() {
                   {m.location && ` · ${m.location}`}
                 </div>
               </div>
-              <AnswerButtons
+              <MatchAnswer
                 value={toAnswer(m.is_available, m.is_maybe)}
                 onAnswer={(given) => answer(m.id, given)}
+                players={overview.players}
+                answers={overview.answers[m.id] ?? {}}
+                maybe={overview.maybe[m.id]}
+                me={myId}
               />
               {m.is_available === null && (
                 <p className="text-sm text-green-900/60">

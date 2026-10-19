@@ -3,12 +3,8 @@
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import AnswerButtons, {
-  answerArgs,
-  toAnswer,
-  type Answer,
-} from "@/components/AnswerButtons";
-import AvailabilityOverview from "@/components/AvailabilityOverview";
+import { answerArgs, toAnswer, type Answer } from "@/components/AnswerButtons";
+import MatchAnswer from "@/components/MatchAnswer";
 import { decodeToken, encodeToken, isMatch } from "@/lib/links";
 import { createClient } from "@/lib/supabase/client";
 
@@ -210,12 +206,10 @@ function Groep() {
                   {m.location && ` · ${m.location}`}
                 </div>
               </div>
-              <AnswerButtons
+              <MatchAnswer
                 value={mine}
                 disabled={!playerId}
                 onAnswer={(given) => answer(m.id, given)}
-              />
-              <AvailabilityOverview
                 players={team.players}
                 answers={m.availability}
                 maybe={m.maybe}
