@@ -54,6 +54,7 @@ function WedstrijdDetail() {
   const [editIsHome, setEditIsHome] = useState(true);
   const [editLocation, setEditLocation] = useState("");
   const [highlights, setHighlights] = useState<Highlight[]>([]);
+  const [order, setOrder] = useState<string[]>([]);
   const [hlPlayer, setHlPlayer] = useState("");
   const [hlKind, setHlKind] = useState<"180" | "finish">("180");
   const [hlValue, setHlValue] = useState("");
@@ -362,6 +363,18 @@ function WedstrijdDetail() {
     ...players.filter((p) => !lineup[p.id] && p.is_active),
   ];
 
+  // Een willekeurige volgorde van de spelers in de basis. Wordt niet opgeslagen.
+  function drawOrder() {
+    const names = players
+      .filter((p) => lineup[p.id] === "starter")
+      .map((p) => p.name);
+    for (let i = names.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [names[i], names[j]] = [names[j], names[i]];
+    }
+    setOrder(names);
+  }
+
   const starters = players.filter((p) => lineup[p.id] === "starter");
   const reserves = players.filter((p) => lineup[p.id] === "reserve");
 
@@ -456,6 +469,25 @@ function WedstrijdDetail() {
             </div>
           )}
         </div>
+      )}
+
+      {isAdmin && starters.length > 1 && (
+        <section className="space-y-2 rounded border bg-white p-3">
+          <h2 className="font-semibold">Volgorde loten</h2>
+          <button
+            onClick={drawOrder}
+            className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
+          >
+            {order.length > 0 ? "Opnieuw loten" : "Loot de volgorde"}
+          </button>
+          {order.length > 0 && (
+            <ol className="list-inside list-decimal space-y-1 text-lg font-semibold">
+              {order.map((name) => (
+                <li key={name}>{name}</li>
+              ))}
+            </ol>
+          )}
+        </section>
       )}
 
       {(highlights.length > 0 || isAdmin) && (
