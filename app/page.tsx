@@ -339,6 +339,13 @@ export default function Home() {
       />
 
       <Link
+        href="/agenda"
+        className="block rounded-lg border bg-white p-4 font-semibold text-green-700"
+      >
+        Agenda: alle wedstrijden en toernooien →
+      </Link>
+
+      <Link
         href="/statistieken"
         className="block rounded-lg border bg-white p-4 font-semibold text-green-700"
       >
