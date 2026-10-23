@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import Tournaments from "@/components/Tournaments";
 import ScoreBadge from "@/components/ScoreBadge";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 
@@ -154,6 +155,8 @@ export default function WedstrijdenPage() {
         isAdmin={isAdmin}
         onDelete={deleteMatch}
       />
+
+      <Tournaments />
     </main>
   );
 }
