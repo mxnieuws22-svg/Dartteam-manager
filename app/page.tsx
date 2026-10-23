@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import AskAvailability from "@/components/AskAvailability";
+import Tournaments from "@/components/Tournaments";
 import ScoreBadge from "@/components/ScoreBadge";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 import { useStandalone } from "@/lib/useStandalone";
@@ -330,6 +331,7 @@ export default function Home() {
       )}
 
       <MatchList title="Hierna" matches={later} />
+      <Tournaments compact />
       <MatchList
         title="Laatste wedstrijden"
         matches={earlier}
