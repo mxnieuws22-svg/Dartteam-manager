@@ -1,9 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-type Row = { name: string; starts: number; active: boolean };
+type Row = { id: string; name: string; starts: number; active: boolean };
 
 type Highlight = {
   player_id: string;
@@ -23,8 +24,17 @@ export default function StatistiekenPage() {
   const [oneEighties, setOneEighties] = useState<
     { name: string; count: number }[]
   >([]);
-  const [finishes, setFinishes] = useState<
-    { name: string; value: number }[]
+  const [finishes, setFinishes] = useState<{ name: string; value: number }[]>(
+    [],
+  );
+  const [results, setResults] = useState<
+    {
+      name: string;
+      won501: number;
+      played501: number;
+      won: number;
+      lost: number;
+    }[]
   >([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");
@@ -62,13 +72,14 @@ export default function StatistiekenPage() {
     setRows(
       (playersRes.data ?? [])
         .map((p) => ({
+          id: p.id,
           name: p.name,
           starts: starts[p.id] ?? 0,
           active: p.is_active,
         }))
         // Spelers die het team hebben verlaten blijven staan zolang ze gespeeld hebben.
         .filter((r) => r.active || r.starts > 0)
-        .sort((a, b) => b.starts - a.starts || a.name.localeCompare(b.name))
+        .sort((a, b) => b.starts - a.starts || a.name.localeCompare(b.name)),
     );
     setLoaded(true);
 
@@ -89,6 +100,41 @@ export default function StatistiekenPage() {
         .map(([name, count]) => ({ name, count }))
         .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
     );
+    // 501 en legs apart ophalen: bestaan de velden nog niet (SQL niet gedraaid), dan blijft dit leeg.
+    const res = await supabase
+      .from("lineup")
+      .select("player_id, won_501, legs_won, legs_lost");
+    if (!res.error) {
+      const per: Record<
+        string,
+        { won501: number; played501: number; won: number; lost: number }
+      > = {};
+      for (const r of res.data ?? []) {
+        const x = (per[r.player_id] ??= {
+          won501: 0,
+          played501: 0,
+          won: 0,
+          lost: 0,
+        });
+        if (r.won_501 !== null) {
+          x.played501 += 1;
+          if (r.won_501) x.won501 += 1;
+        }
+        x.won += r.legs_won ?? 0;
+        x.lost += r.legs_lost ?? 0;
+      }
+      setResults(
+        Object.entries(per)
+          .filter(([, x]) => x.played501 > 0 || x.won + x.lost > 0)
+          .map(([pid, x]) => ({ name: nameOf.get(pid) ?? "Onbekend", ...x }))
+          .sort(
+            (a, b) =>
+              b.won501 - a.won501 ||
+              b.won - a.won ||
+              a.name.localeCompare(b.name),
+          ),
+      );
+    }
     setFinishes(fin.sort((a, b) => b.value - a.value).slice(0, 10));
   }
 
@@ -103,7 +149,7 @@ export default function StatistiekenPage() {
         <h1 className="text-2xl font-bold">Statistieken</h1>
         <p className="text-sm text-green-900/60">
           Hoe vaak iemand in de basis stond, over {matchCount} gespeelde
-          wedstrijden.
+          wedstrijden. Tik op een naam voor alle cijfers van die speler.
         </p>
       </div>
 
@@ -116,14 +162,17 @@ export default function StatistiekenPage() {
             key={r.name}
             className="flex items-center gap-3 rounded-lg border bg-white p-3"
           >
-            <span className="w-32 shrink-0 truncate font-semibold">
+            <Link
+              href={`/statistieken/${r.id}`}
+              className="w-32 shrink-0 truncate font-semibold text-green-700"
+            >
               {r.name}
               {!r.active && (
                 <span className="block text-xs font-normal text-green-900/60">
                   niet meer in team
                 </span>
               )}
-            </span>
+            </Link>
             <div className="h-3 flex-1 overflow-hidden rounded bg-green-100">
               <div
                 className="h-full bg-green-700"
@@ -138,6 +187,31 @@ export default function StatistiekenPage() {
           </li>
         ))}
       </ul>
+
+      {results.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-lg font-bold">501 en legs</h2>
+          <ul className="space-y-2">
+            {results.map((r) => (
+              <li
+                key={r.name}
+                className="flex items-center justify-between gap-3 rounded-lg border bg-white p-3"
+              >
+                <span className="font-semibold">{r.name}</span>
+                <span className="text-right text-sm">
+                  <span className="font-bold">
+                    {r.won501}/{r.played501}
+                  </span>{" "}
+                  501 gewonnen
+                  <span className="block text-green-900/60">
+                    legs {r.won} gewonnen, {r.lost} verloren
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {oneEighties.length > 0 && (
         <section className="space-y-2">
