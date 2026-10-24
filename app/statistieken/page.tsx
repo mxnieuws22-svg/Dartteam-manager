@@ -182,154 +182,141 @@ export default function StatistiekenPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Legs gewonnen per speler (alleen als die zijn ingevuld).
-  const legsOf = new Map(
-    results.filter((r) => r.won > 0).map((r) => [r.name, r.won]),
-  );
-
   // Bij gelijk aantal gewonnen wedstrijden: winstpercentage, dan 501 gewonnen, dan legs gewonnen, dan naam.
-  const won501Of = new Map(results.map((r) => [r.name, r.won501]));
-  const sortedRanking = [...ranking].sort(
-    (a, b) =>
-      b.wins - a.wins ||
-      b.wins / b.played - a.wins / a.played ||
-      (won501Of.get(b.name) ?? 0) - (won501Of.get(a.name) ?? 0) ||
-      (legsOf.get(b.name) ?? 0) - (legsOf.get(a.name) ?? 0) ||
-      a.name.localeCompare(b.name),
-  );
+  const resultOf = new Map(results.map((r) => [r.name, r]));
+  const eightiesOf = new Map(oneEighties.map((r) => [r.name, r.count]));
+  const rankOf = new Map(ranking.map((r) => [r.id, r]));
+  const table = rows
+    .map((r) => {
+      const rk = rankOf.get(r.id);
+      const res = resultOf.get(r.name);
+      return {
+        ...r,
+        wins: rk?.wins ?? 0,
+        played: rk?.played ?? 0,
+        res,
+        eighties: eightiesOf.get(r.name) ?? 0,
+      };
+    })
+    .sort(
+      (a, b) =>
+        b.wins - a.wins ||
+        (b.played ? b.wins / b.played : 0) -
+          (a.played ? a.wins / a.played : 0) ||
+        (b.res?.won501 ?? 0) - (a.res?.won501 ?? 0) ||
+        (b.res?.won ?? 0) - (a.res?.won ?? 0) ||
+        b.starts - a.starts ||
+        a.name.localeCompare(b.name),
+    );
+  const showResults = results.length > 0;
+  const showEighties = oneEighties.length > 0;
+
+  const th = "px-2 py-2 text-center font-semibold";
+  const td = "px-2 py-2 text-center";
 
   return (
     <main className="mx-auto max-w-2xl space-y-6 p-4">
       <div>
         <h1 className="text-2xl font-bold">Statistieken</h1>
         <p className="text-sm text-green-900/60">
-          Hoe vaak iemand in de basis stond, over {matchCount} gespeelde
-          wedstrijden. Tik op een naam voor alle cijfers van die speler.
+          Ranglijst over {matchCount} gespeelde wedstrijden. Tik op een naam
+          voor alle cijfers van die speler.
         </p>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
       {loaded && !error && rows.length === 0 && <p>Nog geen spelers.</p>}
 
-      {ranking.length > 0 && (
+      {table.length > 0 && (
         <section className="space-y-2">
-          <h2 className="text-lg font-bold">Ranglijst</h2>
-          <p className="text-sm text-green-900/60">
-            Per gewonnen wedstrijd waarin iemand in de basis stond.
+          <div className="overflow-x-auto rounded-lg border bg-white">
+            <table className="w-full text-sm">
+              <thead className="bg-green-100 text-green-900">
+                <tr>
+                  <th className={th}>#</th>
+                  <th className={`${th} text-left`}>Speler</th>
+                  <th className={th}>Gewonnen</th>
+                  {showResults && <th className={th}>501</th>}
+                  {showResults && <th className={th}>Legs</th>}
+                  {showEighties && <th className={th}>180</th>}
+                  <th className={th}>Basis</th>
+                </tr>
+              </thead>
+              <tbody>
+                {table.map((r, i) => (
+                  <tr key={r.id} className="border-t">
+                    <td className={td}>
+                      <span
+                        className={`inline-block w-6 rounded font-bold ${
+                          i === 0
+                            ? "bg-amber-400 text-amber-950"
+                            : "text-green-900/70"
+                        }`}
+                      >
+                        {i + 1}
+                      </span>
+                    </td>
+                    <td className="px-2 py-2 text-left">
+                      <Link
+                        href={`/statistieken/${r.id}`}
+                        className="font-semibold text-green-700"
+                      >
+                        {r.name}
+                      </Link>
+                      {!r.active && (
+                        <span className="block text-xs text-green-900/60">
+                          niet meer in team
+                        </span>
+                      )}
+                    </td>
+                    <td className={td}>
+                      <span className="font-bold">{r.wins}</span>
+                      <span className="text-green-900/60"> / {r.played}</span>
+                    </td>
+                    {showResults && (
+                      <td className={td}>
+                        {r.res ? (
+                          <>
+                            <span className="font-bold">{r.res.won501}</span>
+                            <span className="text-green-900/60">
+                              {" "}
+                              / {r.res.played501}
+                            </span>
+                          </>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                    )}
+                    {showResults && (
+                      <td className={td}>
+                        {r.res && r.res.won + r.res.lost > 0 ? (
+                          <>
+                            <span className="font-bold">{r.res.won}</span>
+                            <span className="text-green-900/60">
+                              {" "}
+                              - {r.res.lost}
+                            </span>
+                          </>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                    )}
+                    {showEighties && (
+                      <td className={td}>{r.eighties || "-"}</td>
+                    )}
+                    <td className={td}>{r.starts}x</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-green-900/60">
+            Gewonnen: wedstrijden die het team won met hem in de basis, van het
+            aantal gespeelde wedstrijden met uitslag. 501: gewonnen van
+            gespeeld. Legs: gewonnen - verloren. Basis: keer in de basis.
           </p>
-          <ol className="space-y-2">
-            {sortedRanking.map((r, i) => (
-              <li
-                key={r.id}
-                className="flex items-center gap-3 rounded-lg border bg-white p-3"
-              >
-                <span
-                  className={`w-8 shrink-0 rounded text-center font-bold ${
-                    i === 0
-                      ? "bg-amber-400 text-amber-950"
-                      : "bg-green-100 text-green-900"
-                  }`}
-                >
-                  {i + 1}
-                </span>
-                <Link
-                  href={`/statistieken/${r.id}`}
-                  className="min-w-0 flex-1 truncate font-semibold text-green-700"
-                >
-                  {r.name}
-                </Link>
-                <span className="text-right text-sm">
-                  <span className="font-bold">{r.wins}</span> gewonnen
-                  <span className="block text-green-900/60">
-                    van {r.played} gespeeld
-                  </span>
-                  {legsOf.has(r.name) && (
-                    <span className="block text-green-900/60">
-                      <span className="font-bold text-green-900">
-                        {legsOf.get(r.name)}
-                      </span>{" "}
-                      legs gewonnen
-                    </span>
-                  )}
-                </span>
-              </li>
-            ))}
-          </ol>
-        </section>
-      )}
-
-      <h2 className="text-lg font-bold">In de basis</h2>
-      <ul className="space-y-2">
-        {rows.map((r) => (
-          <li
-            key={r.name}
-            className="flex items-center gap-3 rounded-lg border bg-white p-3"
-          >
-            <Link
-              href={`/statistieken/${r.id}`}
-              className="w-32 shrink-0 truncate font-semibold text-green-700"
-            >
-              {r.name}
-              {!r.active && (
-                <span className="block text-xs font-normal text-green-900/60">
-                  niet meer in team
-                </span>
-              )}
-            </Link>
-            <div className="h-3 flex-1 overflow-hidden rounded bg-green-100">
-              <div
-                className="h-full bg-green-700"
-                style={{
-                  width: `${matchCount ? (r.starts / matchCount) * 100 : 0}%`,
-                }}
-              />
-            </div>
-            <span className="w-8 shrink-0 text-right font-bold">
-              {r.starts}x
-            </span>
-          </li>
-        ))}
-      </ul>
-
-      {results.length > 0 && (
-        <section className="space-y-2">
-          <h2 className="text-lg font-bold">501 en legs</h2>
-          <ul className="space-y-2">
-            {results.map((r) => (
-              <li
-                key={r.name}
-                className="flex items-center justify-between gap-3 rounded-lg border bg-white p-3"
-              >
-                <span className="font-semibold">{r.name}</span>
-                <span className="text-right text-sm">
-                  <span className="font-bold">
-                    {r.won501}/{r.played501}
-                  </span>{" "}
-                  501 gewonnen
-                  <span className="block text-green-900/60">
-                    legs {r.won} gewonnen, {r.lost} verloren
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {oneEighties.length > 0 && (
-        <section className="space-y-2">
-          <h2 className="text-lg font-bold">180&apos;s</h2>
-          <ul className="space-y-2">
-            {oneEighties.map((r) => (
-              <li
-                key={r.name}
-                className="flex items-center justify-between rounded-lg border bg-white p-3"
-              >
-                <span className="font-semibold">{r.name}</span>
-                <span className="font-bold">{r.count}x</span>
-              </li>
-            ))}
-          </ul>
         </section>
       )}
 
