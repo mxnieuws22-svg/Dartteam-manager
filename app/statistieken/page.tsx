@@ -1,9 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-type Row = { name: string; starts: number; active: boolean };
+type Row = { id: string; name: string; starts: number; active: boolean };
 
 type Highlight = {
   player_id: string;
@@ -23,9 +24,9 @@ export default function StatistiekenPage() {
   const [oneEighties, setOneEighties] = useState<
     { name: string; count: number }[]
   >([]);
-  const [finishes, setFinishes] = useState<
-    { name: string; value: number }[]
-  >([]);
+  const [finishes, setFinishes] = useState<{ name: string; value: number }[]>(
+    [],
+  );
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");
 
@@ -62,13 +63,14 @@ export default function StatistiekenPage() {
     setRows(
       (playersRes.data ?? [])
         .map((p) => ({
+          id: p.id,
           name: p.name,
           starts: starts[p.id] ?? 0,
           active: p.is_active,
         }))
         // Spelers die het team hebben verlaten blijven staan zolang ze gespeeld hebben.
         .filter((r) => r.active || r.starts > 0)
-        .sort((a, b) => b.starts - a.starts || a.name.localeCompare(b.name))
+        .sort((a, b) => b.starts - a.starts || a.name.localeCompare(b.name)),
     );
     setLoaded(true);
 
@@ -103,7 +105,7 @@ export default function StatistiekenPage() {
         <h1 className="text-2xl font-bold">Statistieken</h1>
         <p className="text-sm text-green-900/60">
           Hoe vaak iemand in de basis stond, over {matchCount} gespeelde
-          wedstrijden.
+          wedstrijden. Tik op een naam voor alle cijfers van die speler.
         </p>
       </div>
 
@@ -116,14 +118,17 @@ export default function StatistiekenPage() {
             key={r.name}
             className="flex items-center gap-3 rounded-lg border bg-white p-3"
           >
-            <span className="w-32 shrink-0 truncate font-semibold">
+            <Link
+              href={`/statistieken/${r.id}`}
+              className="w-32 shrink-0 truncate font-semibold text-green-700"
+            >
               {r.name}
               {!r.active && (
                 <span className="block text-xs font-normal text-green-900/60">
                   niet meer in team
                 </span>
               )}
-            </span>
+            </Link>
             <div className="h-3 flex-1 overflow-hidden rounded bg-green-100">
               <div
                 className="h-full bg-green-700"
