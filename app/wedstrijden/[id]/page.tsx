@@ -23,7 +23,6 @@ type Match = {
   score_against: number | null;
 };
 type Role = "none" | "starter" | "reserve";
-type Score = { won: string; lost: string; avg: string };
 type Highlight = {
   id: string;
   player_id: string;
@@ -55,8 +54,6 @@ function WedstrijdDetail() {
   const [editIsHome, setEditIsHome] = useState(true);
   const [editLocation, setEditLocation] = useState("");
   const [highlights, setHighlights] = useState<Highlight[]>([]);
-  const [savedScores, setSavedScores] = useState(false);
-  const [scores, setScores] = useState<Record<string, Score>>({});
   const [order, setOrder] = useState<string[]>([]);
   const [hlPlayer, setHlPlayer] = useState("");
   const [hlKind, setHlKind] = useState<"180" | "finish">("180");
@@ -138,26 +135,6 @@ function WedstrijdDetail() {
         ]),
       ),
     );
-    // Legs en gemiddelde apart ophalen: bestaan de velden nog niet (SQL niet gedraaid), dan blijft dit leeg.
-    supabase
-      .from("lineup")
-      .select("player_id, legs_won, legs_lost, average")
-      .eq("match_id", id)
-      .then(({ data, error }) => {
-        if (error) return;
-        setScores(
-          Object.fromEntries(
-            (data ?? []).map((r) => [
-              r.player_id,
-              {
-                won: r.legs_won?.toString() ?? "",
-                lost: r.legs_lost?.toString() ?? "",
-                avg: r.average?.toString() ?? "",
-              },
-            ]),
-          ),
-        );
-      });
     // 180's en finishes apart ophalen: bestaat de tabel nog niet (SQL niet gedraaid), dan blijft dit leeg.
     supabase
       .from("highlights")
@@ -386,45 +363,6 @@ function WedstrijdDetail() {
     ...players.filter((p) => !lineup[p.id] && p.is_active),
   ];
 
-  async function saveScores(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    const num = (v: string) => (v.trim() === "" ? null : Number(v));
-    for (const p of [...starters, ...reserves]) {
-      const sc = scores[p.id] ?? { won: "", lost: "", avg: "" };
-      const { error } = await supabase
-        .from("lineup")
-        .update({
-          legs_won: num(sc.won),
-          legs_lost: num(sc.lost),
-          average: num(sc.avg),
-        })
-        .eq("match_id", id)
-        .eq("player_id", p.id);
-      if (error) {
-        setError(
-          "Opslaan mislukt. Is supabase/speler_scores.sql al gedraaid in Supabase?",
-        );
-        return;
-      }
-    }
-    setSavedScores(true);
-  }
-
-  // Wat iemand bij deze wedstrijd haalde, voor onder de naam.
-  function scoreText(playerId: string) {
-    const sc = scores[playerId];
-    if (!sc) return "";
-    return [
-      sc.won !== "" || sc.lost !== ""
-        ? `${sc.won || 0}-${sc.lost || 0} legs`
-        : "",
-      sc.avg !== "" ? `gem. ${sc.avg}` : "",
-    ]
-      .filter(Boolean)
-      .join(" · ");
-  }
-
   // Een willekeurige volgorde van de spelers in de basis. Wordt niet opgeslagen.
   function drawOrder() {
     const names = players
@@ -514,11 +452,6 @@ function WedstrijdDetail() {
               {starters.map((p) => (
                 <li key={p.id} className="rounded bg-green-100 px-2 py-1">
                   {p.name}
-                  {scoreText(p.id) && (
-                    <span className="block text-xs text-green-900/70">
-                      {scoreText(p.id)}
-                    </span>
-                  )}
                 </li>
               ))}
             </ul>
@@ -530,87 +463,12 @@ function WedstrijdDetail() {
                 {reserves.map((p) => (
                   <li key={p.id} className="rounded border px-2 py-1">
                     {p.name}
-                    {scoreText(p.id) && (
-                      <span className="block text-xs text-green-900/70">
-                        {scoreText(p.id)}
-                      </span>
-                    )}
                   </li>
                 ))}
               </ul>
             </div>
           )}
         </div>
-      )}
-
-      {isAdmin && starters.length + reserves.length > 0 && (
-        <details className="rounded border bg-white p-2">
-          <summary className="cursor-pointer font-semibold text-green-700">
-            Scores per speler invullen
-          </summary>
-          <form onSubmit={saveScores} className="mt-2 space-y-2">
-            <p className="text-sm text-green-900/70">
-              Legs gewonnen, legs verloren en het gemiddelde (optioneel).
-            </p>
-            {[...starters, ...reserves].map((p) => {
-              const sc = scores[p.id] ?? { won: "", lost: "", avg: "" };
-              const set = (patch: Partial<Score>) => {
-                setSavedScores(false);
-                setScores((prev) => ({ ...prev, [p.id]: { ...sc, ...patch } }));
-              };
-              const field =
-                "w-16 rounded border border-green-300 p-2 text-gray-900";
-              return (
-                <div key={p.id} className="flex items-center gap-2">
-                  <span className="min-w-0 flex-1 truncate font-semibold">
-                    {p.name}
-                  </span>
-                  <input
-                    type="number"
-                    min={0}
-                    inputMode="numeric"
-                    aria-label={`${p.name} legs gewonnen`}
-                    placeholder="Won"
-                    value={sc.won}
-                    onChange={(e) => set({ won: e.target.value })}
-                    className={field}
-                  />
-                  <input
-                    type="number"
-                    min={0}
-                    inputMode="numeric"
-                    aria-label={`${p.name} legs verloren`}
-                    placeholder="Verl."
-                    value={sc.lost}
-                    onChange={(e) => set({ lost: e.target.value })}
-                    className={field}
-                  />
-                  <input
-                    type="number"
-                    min={0}
-                    max={199}
-                    step="0.01"
-                    inputMode="decimal"
-                    aria-label={`${p.name} gemiddelde`}
-                    placeholder="Gem."
-                    value={sc.avg}
-                    onChange={(e) => set({ avg: e.target.value })}
-                    className="w-20 rounded border border-green-300 p-2 text-gray-900"
-                  />
-                </div>
-              );
-            })}
-            <button
-              type="submit"
-              className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
-            >
-              Opslaan
-            </button>
-            {savedScores && (
-              <span className="ml-2 text-sm text-green-700">Opgeslagen</span>
-            )}
-          </form>
-        </details>
       )}
 
       {isAdmin && starters.length > 1 && (
