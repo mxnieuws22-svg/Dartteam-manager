@@ -182,6 +182,11 @@ export default function StatistiekenPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Legs gewonnen per speler (alleen als die zijn ingevuld).
+  const legsOf = new Map(
+    results.filter((r) => r.won > 0).map((r) => [r.name, r.won]),
+  );
+
   return (
     <main className="mx-auto max-w-2xl space-y-6 p-4">
       <div>
@@ -227,6 +232,14 @@ export default function StatistiekenPage() {
                   <span className="block text-green-900/60">
                     van {r.played} gespeeld
                   </span>
+                  {legsOf.has(r.name) && (
+                    <span className="block text-green-900/60">
+                      <span className="font-bold text-green-900">
+                        {legsOf.get(r.name)}
+                      </span>{" "}
+                      legs gewonnen
+                    </span>
+                  )}
                 </span>
               </li>
             ))}
