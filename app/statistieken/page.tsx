@@ -187,6 +187,17 @@ export default function StatistiekenPage() {
     results.filter((r) => r.won > 0).map((r) => [r.name, r.won]),
   );
 
+  // Bij gelijk aantal gewonnen wedstrijden: winstpercentage, dan 501 gewonnen, dan legs gewonnen, dan naam.
+  const won501Of = new Map(results.map((r) => [r.name, r.won501]));
+  const sortedRanking = [...ranking].sort(
+    (a, b) =>
+      b.wins - a.wins ||
+      b.wins / b.played - a.wins / a.played ||
+      (won501Of.get(b.name) ?? 0) - (won501Of.get(a.name) ?? 0) ||
+      (legsOf.get(b.name) ?? 0) - (legsOf.get(a.name) ?? 0) ||
+      a.name.localeCompare(b.name),
+  );
+
   return (
     <main className="mx-auto max-w-2xl space-y-6 p-4">
       <div>
@@ -207,7 +218,7 @@ export default function StatistiekenPage() {
             Per gewonnen wedstrijd waarin iemand in de basis stond.
           </p>
           <ol className="space-y-2">
-            {ranking.map((r, i) => (
+            {sortedRanking.map((r, i) => (
               <li
                 key={r.id}
                 className="flex items-center gap-3 rounded-lg border bg-white p-3"
