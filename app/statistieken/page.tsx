@@ -27,6 +27,15 @@ export default function StatistiekenPage() {
   const [finishes, setFinishes] = useState<{ name: string; value: number }[]>(
     [],
   );
+  const [results, setResults] = useState<
+    {
+      name: string;
+      won501: number;
+      played501: number;
+      won: number;
+      lost: number;
+    }[]
+  >([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");
 
@@ -91,6 +100,41 @@ export default function StatistiekenPage() {
         .map(([name, count]) => ({ name, count }))
         .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
     );
+    // 501 en legs apart ophalen: bestaan de velden nog niet (SQL niet gedraaid), dan blijft dit leeg.
+    const res = await supabase
+      .from("lineup")
+      .select("player_id, won_501, legs_won, legs_lost");
+    if (!res.error) {
+      const per: Record<
+        string,
+        { won501: number; played501: number; won: number; lost: number }
+      > = {};
+      for (const r of res.data ?? []) {
+        const x = (per[r.player_id] ??= {
+          won501: 0,
+          played501: 0,
+          won: 0,
+          lost: 0,
+        });
+        if (r.won_501 !== null) {
+          x.played501 += 1;
+          if (r.won_501) x.won501 += 1;
+        }
+        x.won += r.legs_won ?? 0;
+        x.lost += r.legs_lost ?? 0;
+      }
+      setResults(
+        Object.entries(per)
+          .filter(([, x]) => x.played501 > 0 || x.won + x.lost > 0)
+          .map(([pid, x]) => ({ name: nameOf.get(pid) ?? "Onbekend", ...x }))
+          .sort(
+            (a, b) =>
+              b.won501 - a.won501 ||
+              b.won - a.won ||
+              a.name.localeCompare(b.name),
+          ),
+      );
+    }
     setFinishes(fin.sort((a, b) => b.value - a.value).slice(0, 10));
   }
 
@@ -143,6 +187,31 @@ export default function StatistiekenPage() {
           </li>
         ))}
       </ul>
+
+      {results.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-lg font-bold">501 en legs</h2>
+          <ul className="space-y-2">
+            {results.map((r) => (
+              <li
+                key={r.name}
+                className="flex items-center justify-between gap-3 rounded-lg border bg-white p-3"
+              >
+                <span className="font-semibold">{r.name}</span>
+                <span className="text-right text-sm">
+                  <span className="font-bold">
+                    {r.won501}/{r.played501}
+                  </span>{" "}
+                  501 gewonnen
+                  <span className="block text-green-900/60">
+                    legs {r.won} gewonnen, {r.lost} verloren
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {oneEighties.length > 0 && (
         <section className="space-y-2">

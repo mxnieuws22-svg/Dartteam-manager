@@ -18,6 +18,9 @@ type MatchInfo = {
 
 type Row = {
   is_starter: boolean;
+  legs_won?: number | null;
+  legs_lost?: number | null;
+  won_501?: boolean | null;
   matches: MatchInfo | null;
 };
 
@@ -50,13 +53,21 @@ function SpelerStatistieken() {
   const [error, setError] = useState("");
 
   async function load() {
-    const lineup = await supabase
+    const matchFields =
+      "matches(id, opponent, match_date, status, is_home, score_for, score_against)";
+    const withLegs = await supabase
       .from("lineup")
-      .select(
-        "is_starter, matches(id, opponent, match_date, status, is_home, score_for, score_against)",
-      )
+      .select(`is_starter, won_501, legs_won, legs_lost, ${matchFields}`)
       .eq("player_id", id)
       .returns<Row[]>();
+    // Bestaan de velden voor legs nog niet (SQL niet gedraaid), dan zonder.
+    const lineup = withLegs.error
+      ? await supabase
+          .from("lineup")
+          .select(`is_starter, ${matchFields}`)
+          .eq("player_id", id)
+          .returns<Row[]>()
+      : withLegs;
     const player = await supabase
       .from("players")
       .select("name")
@@ -103,6 +114,11 @@ function SpelerStatistieken() {
   const teamWins = withScore.filter(
     (r) => r.matches!.score_for! > r.matches!.score_against!,
   ).length;
+  const legsWon = played.reduce((n, r) => n + (r.legs_won ?? 0), 0);
+  const legsLost = played.reduce((n, r) => n + (r.legs_lost ?? 0), 0);
+  const played501 = played.filter((r) => r.won_501 != null);
+  const won501 = played501.filter((r) => r.won_501 === true).length;
+
   const oneEighties = highlights.filter((h) => h.kind === "180").length;
   const finishes = highlights
     .filter((h) => h.kind === "finish" && h.value)
@@ -129,6 +145,20 @@ function SpelerStatistieken() {
             <Stat
               label="Team won"
               value={withScore.length ? `${teamWins}/${withScore.length}` : "-"}
+            />
+            <Stat label="Legs gewonnen" value={legsWon} />
+            <Stat label="Legs verloren" value={legsLost} />
+            <Stat
+              label="Legs gewonnen %"
+              value={
+                legsWon + legsLost
+                  ? `${Math.round((legsWon / (legsWon + legsLost)) * 100)}%`
+                  : "-"
+              }
+            />
+            <Stat
+              label="501 gewonnen"
+              value={played501.length ? `${won501}/${played501.length}` : "-"}
             />
             <Stat label="180's" value={oneEighties} />
           </div>
@@ -159,6 +189,10 @@ function SpelerStatistieken() {
             <ul className="space-y-2">
               {played.map((r) => {
                 const m = r.matches!;
+                const legs =
+                  r.legs_won != null || r.legs_lost != null
+                    ? `${r.legs_won ?? 0}-${r.legs_lost ?? 0} legs`
+                    : "";
                 return (
                   <li key={m.id}>
                     <Link
@@ -175,6 +209,9 @@ function SpelerStatistieken() {
                           })}
                           {" · "}
                           {r.is_starter ? "Basis" : "Reserve"}
+                          {legs && ` · ${legs}`}
+                          {r.won_501 != null &&
+                            ` · 501 ${r.won_501 ? "gewonnen" : "verloren"}`}
                         </div>
                       </div>
                       <ScoreBadge

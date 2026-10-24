@@ -23,6 +23,7 @@ type Match = {
   score_against: number | null;
 };
 type Role = "none" | "starter" | "reserve";
+type Score = { w501: string; won: string; lost: string };
 type Highlight = {
   id: string;
   player_id: string;
@@ -54,6 +55,8 @@ function WedstrijdDetail() {
   const [editIsHome, setEditIsHome] = useState(true);
   const [editLocation, setEditLocation] = useState("");
   const [highlights, setHighlights] = useState<Highlight[]>([]);
+  const [savedScores, setSavedScores] = useState(false);
+  const [scores, setScores] = useState<Record<string, Score>>({});
   const [order, setOrder] = useState<string[]>([]);
   const [hlPlayer, setHlPlayer] = useState("");
   const [hlKind, setHlKind] = useState<"180" | "finish">("180");
@@ -135,6 +138,31 @@ function WedstrijdDetail() {
         ]),
       ),
     );
+    // Legs en gemiddelde apart ophalen: bestaan de velden nog niet (SQL niet gedraaid), dan blijft dit leeg.
+    supabase
+      .from("lineup")
+      .select("player_id, won_501, legs_won, legs_lost")
+      .eq("match_id", id)
+      .then(({ data, error }) => {
+        if (error) return;
+        setScores(
+          Object.fromEntries(
+            (data ?? []).map((r) => [
+              r.player_id,
+              {
+                w501:
+                  r.won_501 === true
+                    ? "won"
+                    : r.won_501 === false
+                      ? "lost"
+                      : "",
+                won: r.legs_won?.toString() ?? "",
+                lost: r.legs_lost?.toString() ?? "",
+              },
+            ]),
+          ),
+        );
+      });
     // 180's en finishes apart ophalen: bestaat de tabel nog niet (SQL niet gedraaid), dan blijft dit leeg.
     supabase
       .from("highlights")
@@ -363,6 +391,46 @@ function WedstrijdDetail() {
     ...players.filter((p) => !lineup[p.id] && p.is_active),
   ];
 
+  async function saveScores(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    const num = (v: string) => (v.trim() === "" ? null : Number(v));
+    for (const p of [...starters, ...reserves]) {
+      const sc = scores[p.id] ?? { w501: "", won: "", lost: "" };
+      const { error } = await supabase
+        .from("lineup")
+        .update({
+          won_501: sc.w501 === "" ? null : sc.w501 === "won",
+          legs_won: num(sc.won),
+          legs_lost: num(sc.lost),
+        })
+        .eq("match_id", id)
+        .eq("player_id", p.id);
+      if (error) {
+        setError(
+          "Opslaan mislukt. Is supabase/speler_scores.sql al gedraaid in Supabase?",
+        );
+        return;
+      }
+    }
+    setSavedScores(true);
+  }
+
+  // Wat iemand bij deze wedstrijd haalde, voor onder de naam.
+  function scoreText(playerId: string) {
+    const sc = scores[playerId];
+    if (!sc) return "";
+    return [
+      sc.w501 === "won"
+        ? "501 gewonnen"
+        : sc.w501 === "lost"
+          ? "501 verloren"
+          : "",
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  }
+
   // Een willekeurige volgorde van de spelers in de basis. Wordt niet opgeslagen.
   function drawOrder() {
     const names = players
@@ -452,6 +520,11 @@ function WedstrijdDetail() {
               {starters.map((p) => (
                 <li key={p.id} className="rounded bg-green-100 px-2 py-1">
                   {p.name}
+                  {scoreText(p.id) && (
+                    <span className="block text-xs text-green-900/70">
+                      {scoreText(p.id)}
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>
@@ -463,12 +536,86 @@ function WedstrijdDetail() {
                 {reserves.map((p) => (
                   <li key={p.id} className="rounded border px-2 py-1">
                     {p.name}
+                    {scoreText(p.id) && (
+                      <span className="block text-xs text-green-900/70">
+                        {scoreText(p.id)}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>
             </div>
           )}
         </div>
+      )}
+
+      {isAdmin && starters.length + reserves.length > 0 && (
+        <details className="rounded border bg-white p-2">
+          <summary className="cursor-pointer font-semibold text-green-700">
+            Scores per speler invullen
+          </summary>
+          <form onSubmit={saveScores} className="mt-2 space-y-2">
+            <p className="text-sm text-green-900/70">
+              Of iemand zijn 501 won, en hoeveel legs hij won en verloor
+              (optioneel).
+            </p>
+            {[...starters, ...reserves].map((p) => {
+              const sc = scores[p.id] ?? { w501: "", won: "", lost: "" };
+              const set = (patch: Partial<Score>) => {
+                setSavedScores(false);
+                setScores((prev) => ({ ...prev, [p.id]: { ...sc, ...patch } }));
+              };
+              const field =
+                "w-16 rounded border border-green-300 p-2 text-gray-900";
+              return (
+                <div key={p.id} className="flex flex-wrap items-center gap-2">
+                  <span className="w-full truncate font-semibold">
+                    {p.name}
+                  </span>
+                  <select
+                    aria-label={`${p.name} 501`}
+                    value={sc.w501}
+                    onChange={(e) => set({ w501: e.target.value })}
+                    className="rounded border border-green-300 p-2 text-gray-900"
+                  >
+                    <option value="">501: nog niet ingevuld</option>
+                    <option value="won">501 gewonnen</option>
+                    <option value="lost">501 verloren</option>
+                  </select>
+                  <input
+                    type="number"
+                    min={0}
+                    inputMode="numeric"
+                    aria-label={`${p.name} legs gewonnen`}
+                    placeholder="Won"
+                    value={sc.won}
+                    onChange={(e) => set({ won: e.target.value })}
+                    className={field}
+                  />
+                  <input
+                    type="number"
+                    min={0}
+                    inputMode="numeric"
+                    aria-label={`${p.name} legs verloren`}
+                    placeholder="Verl."
+                    value={sc.lost}
+                    onChange={(e) => set({ lost: e.target.value })}
+                    className={field}
+                  />
+                </div>
+              );
+            })}
+            <button
+              type="submit"
+              className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
+            >
+              Opslaan
+            </button>
+            {savedScores && (
+              <span className="ml-2 text-sm text-green-700">Opgeslagen</span>
+            )}
+          </form>
+        </details>
       )}
 
       {isAdmin && starters.length > 1 && (
