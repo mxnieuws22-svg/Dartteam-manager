@@ -14,7 +14,12 @@ type Highlight = {
 
 type LineupRow = {
   player_id: string;
-  matches: { match_date: string; status: string } | null;
+  matches: {
+    match_date: string;
+    status: string;
+    score_for: number | null;
+    score_against: number | null;
+  } | null;
 };
 
 export default function StatistiekenPage() {
@@ -36,6 +41,9 @@ export default function StatistiekenPage() {
       lost: number;
     }[]
   >([]);
+  const [ranking, setRanking] = useState<
+    { id: string; name: string; wins: number; played: number }[]
+  >([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");
 
@@ -45,7 +53,9 @@ export default function StatistiekenPage() {
       supabase.from("players").select("id, name, is_active"),
       supabase
         .from("lineup")
-        .select("player_id, matches(match_date, status)")
+        .select(
+          "player_id, matches(match_date, status, score_for, score_against)",
+        )
         .eq("is_starter", true)
         .returns<LineupRow[]>(),
       supabase.from("matches").select("match_date, status"),
@@ -67,6 +77,35 @@ export default function StatistiekenPage() {
         starts[l.player_id] = (starts[l.player_id] ?? 0) + 1;
       }
     }
+
+    // Ranglijst: per gewonnen wedstrijd waarin iemand in de basis stond (alleen wedstrijden met uitslag).
+    const wins: Record<string, number> = {};
+    const playedScored: Record<string, number> = {};
+    for (const l of lineupRes.data ?? []) {
+      const m = l.matches;
+      if (m && m.score_for !== null && m.score_against !== null) {
+        playedScored[l.player_id] = (playedScored[l.player_id] ?? 0) + 1;
+        if (m.score_for > m.score_against) {
+          wins[l.player_id] = (wins[l.player_id] ?? 0) + 1;
+        }
+      }
+    }
+    setRanking(
+      (playersRes.data ?? [])
+        .filter((p) => playedScored[p.id])
+        .map((p) => ({
+          id: p.id,
+          name: p.name,
+          wins: wins[p.id] ?? 0,
+          played: playedScored[p.id],
+        }))
+        .sort(
+          (a, b) =>
+            b.wins - a.wins ||
+            b.wins / b.played - a.wins / a.played ||
+            a.name.localeCompare(b.name),
+        ),
+    );
 
     setMatchCount((matchesRes.data ?? []).filter(counted).length);
     setRows(
@@ -156,6 +195,46 @@ export default function StatistiekenPage() {
       {error && <p className="text-sm text-red-600">{error}</p>}
       {loaded && !error && rows.length === 0 && <p>Nog geen spelers.</p>}
 
+      {ranking.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-lg font-bold">Ranglijst</h2>
+          <p className="text-sm text-green-900/60">
+            Per gewonnen wedstrijd waarin iemand in de basis stond.
+          </p>
+          <ol className="space-y-2">
+            {ranking.map((r, i) => (
+              <li
+                key={r.id}
+                className="flex items-center gap-3 rounded-lg border bg-white p-3"
+              >
+                <span
+                  className={`w-8 shrink-0 rounded text-center font-bold ${
+                    i === 0
+                      ? "bg-amber-400 text-amber-950"
+                      : "bg-green-100 text-green-900"
+                  }`}
+                >
+                  {i + 1}
+                </span>
+                <Link
+                  href={`/statistieken/${r.id}`}
+                  className="min-w-0 flex-1 truncate font-semibold text-green-700"
+                >
+                  {r.name}
+                </Link>
+                <span className="text-right text-sm">
+                  <span className="font-bold">{r.wins}</span> gewonnen
+                  <span className="block text-green-900/60">
+                    van {r.played} gespeeld
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
+      <h2 className="text-lg font-bold">In de basis</h2>
       <ul className="space-y-2">
         {rows.map((r) => (
           <li
