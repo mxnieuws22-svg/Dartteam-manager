@@ -96,47 +96,49 @@ export default function WedstrijdenPage() {
       <h1 className="text-2xl font-bold">Wedstrijden</h1>
 
       {isAdmin && (
-        <form
-          onSubmit={addMatch}
-          className="space-y-3 rounded-lg border bg-white p-4"
-        >
-          <input
-            type="text"
-            placeholder="Tegenstander"
-            value={opponent}
-            onChange={(e) => setOpponent(e.target.value)}
-            required
-            className="w-full rounded border border-green-300 p-2 text-gray-900"
-          />
-          <input
-            type="date"
-            value={matchDate}
-            onChange={(e) => setMatchDate(e.target.value)}
-            required
-            className="w-full rounded border border-green-300 p-2 text-gray-900"
-          />
-          <select
-            value={isHome ? "home" : "away"}
-            onChange={(e) => setIsHome(e.target.value === "home")}
-            className="w-full rounded border border-green-300 p-2 text-gray-900"
-          >
-            <option value="home">Thuiswedstrijd</option>
-            <option value="away">Uitwedstrijd</option>
-          </select>
-          <input
-            type="text"
-            placeholder="Locatie (optioneel)"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            className="w-full rounded border border-green-300 p-2 text-gray-900"
-          />
-          <button
-            type="submit"
-            className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
-          >
-            Aanmaken
-          </button>
-        </form>
+        <details className="rounded-lg border bg-white p-4">
+          <summary className="cursor-pointer font-semibold text-green-700">
+            + Wedstrijd toevoegen
+          </summary>
+          <form onSubmit={addMatch} className="mt-3 space-y-3">
+            <input
+              type="text"
+              placeholder="Tegenstander"
+              value={opponent}
+              onChange={(e) => setOpponent(e.target.value)}
+              required
+              className="w-full rounded border border-green-300 p-2 text-gray-900"
+            />
+            <input
+              type="date"
+              value={matchDate}
+              onChange={(e) => setMatchDate(e.target.value)}
+              required
+              className="w-full rounded border border-green-300 p-2 text-gray-900"
+            />
+            <select
+              value={isHome ? "home" : "away"}
+              onChange={(e) => setIsHome(e.target.value === "home")}
+              className="w-full rounded border border-green-300 p-2 text-gray-900"
+            >
+              <option value="home">Thuiswedstrijd</option>
+              <option value="away">Uitwedstrijd</option>
+            </select>
+            <input
+              type="text"
+              placeholder="Locatie (optioneel)"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              className="w-full rounded border border-green-300 p-2 text-gray-900"
+            />
+            <button
+              type="submit"
+              className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
+            >
+              Aanmaken
+            </button>
+          </form>
+        </details>
       )}
 
       {error && <p className="text-sm text-red-600">{error}</p>}

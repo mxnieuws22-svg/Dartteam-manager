@@ -125,11 +125,11 @@ export default function AskAvailability({
             </button>
           </div>
 
-          <div className="space-y-2 border-t pt-3">
-            <p className="text-sm text-green-900/70">
-              Of een link alleen voor deze wedstrijd.
-            </p>
-            <div className="flex gap-2">
+          <details className="border-t pt-3">
+            <summary className="cursor-pointer text-sm font-semibold text-green-700">
+              Of een link alleen voor deze wedstrijd
+            </summary>
+            <div className="mt-2 flex gap-2">
               <button
                 onClick={() => copy("groep", groupLink())}
                 className="rounded border border-green-300 px-4 py-2 text-sm font-semibold text-green-900"
@@ -147,7 +147,7 @@ export default function AskAvailability({
                 Deel via WhatsApp
               </button>
             </div>
-          </div>
+          </details>
         </section>
       )}
 
