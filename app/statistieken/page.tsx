@@ -215,7 +215,7 @@ export default function StatistiekenPage() {
           ),
       );
     }
-    setFinishes(fin.sort((a, b) => b.value - a.value).slice(0, 10));
+    setFinishes(fin.sort((a, b) => b.value - a.value));
   }
 
   useEffect(() => {
@@ -225,6 +225,11 @@ export default function StatistiekenPage() {
 
   // Bij gelijk aantal gewonnen wedstrijden: winstpercentage, dan 501 gewonnen, dan legs gewonnen, dan naam.
   const resultOf = new Map(results.map((r) => [r.name, r]));
+  // De hoogste finish per speler (de lijst is al van hoog naar laag).
+  const bestFinishOf = new Map<string, number>();
+  for (const f of finishes) {
+    if (!bestFinishOf.has(f.name)) bestFinishOf.set(f.name, f.value);
+  }
   const eightiesOf = new Map(oneEighties.map((r) => [r.name, r.count]));
   const rankOf = new Map(ranking.map((r) => [r.id, r]));
   const table = rows
@@ -237,6 +242,7 @@ export default function StatistiekenPage() {
         played: rk?.played ?? 0,
         res,
         eighties: eightiesOf.get(r.name) ?? 0,
+        finish: bestFinishOf.get(r.name),
       };
     })
     .sort(
@@ -251,6 +257,7 @@ export default function StatistiekenPage() {
     );
   const showResults = results.length > 0;
   const showEighties = oneEighties.length > 0;
+  const showFinishes = finishes.length > 0;
 
   const th = "px-2 py-2 text-center font-semibold";
   const td = "px-2 py-2 text-center";
@@ -295,6 +302,7 @@ export default function StatistiekenPage() {
                   {showResults && <th className={th}>501</th>}
                   {showResults && <th className={th}>Legs</th>}
                   {showEighties && <th className={th}>180</th>}
+                  {showFinishes && <th className={th}>Finish</th>}
                   <th className={th}>Basis</th>
                 </tr>
               </thead>
@@ -362,6 +370,7 @@ export default function StatistiekenPage() {
                     {showEighties && (
                       <td className={td}>{r.eighties || "-"}</td>
                     )}
+                    {showFinishes && <td className={td}>{r.finish ?? "-"}</td>}
                     <td className={td}>{r.starts}x</td>
                   </tr>
                 ))}
@@ -371,7 +380,8 @@ export default function StatistiekenPage() {
           <p className="text-xs text-green-900/60">
             Gewonnen: wedstrijden die het team won met hem in de basis, van het
             aantal gespeelde wedstrijden met uitslag. 501: gewonnen van
-            gespeeld. Legs: gewonnen - verloren. Basis: keer in de basis.
+            gespeeld. Legs: gewonnen - verloren. Finish: hoogste finish. Basis:
+            keer in de basis.
           </p>
         </section>
       )}
@@ -380,7 +390,7 @@ export default function StatistiekenPage() {
         <section className="space-y-2">
           <h2 className="text-lg font-bold">Hoogste finishes</h2>
           <ul className="space-y-2">
-            {finishes.map((r, i) => (
+            {finishes.slice(0, 10).map((r, i) => (
               <li
                 key={i}
                 className="flex items-center justify-between rounded-lg border bg-white p-3"
