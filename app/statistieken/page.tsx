@@ -22,6 +22,12 @@ type LineupRow = {
   } | null;
 };
 
+// Een seizoen loopt van 1 augustus tot en met 31 juli en heet naar het jaar waarin het begint.
+function seasonOf(date: string) {
+  const year = Number(date.slice(0, 4));
+  return Number(date.slice(5, 7)) >= 8 ? year : year - 1;
+}
+
 export default function StatistiekenPage() {
   const supabase = createClient();
   const [rows, setRows] = useState<Row[]>([]);
@@ -44,6 +50,8 @@ export default function StatistiekenPage() {
   const [ranking, setRanking] = useState<
     { id: string; name: string; wins: number; played: number }[]
   >([]);
+  const [season, setSeason] = useState("");
+  const [seasons, setSeasons] = useState<number[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");
 
@@ -67,13 +75,25 @@ export default function StatistiekenPage() {
       return;
     }
 
+    // Het gekozen seizoen: standaard het huidige, of anders het laatste met wedstrijden.
+    const all = [
+      ...new Set((matchesRes.data ?? []).map((m) => seasonOf(m.match_date))),
+    ].sort((a, b) => b - a);
+    setSeasons(all);
+    const current = seasonOf(today);
+    const chosen =
+      season || String(all.includes(current) ? current : (all[0] ?? current));
+    if (!season) setSeason(chosen);
+    const inSeason = (date: string) =>
+      chosen === "all" || String(seasonOf(date)) === chosen;
+
     // Een wedstrijd telt mee als hij gespeeld is of de datum voorbij is.
     const counted = (m: { match_date: string; status: string }) =>
       m.status === "played" || m.match_date <= today;
 
     const starts: Record<string, number> = {};
     for (const l of lineupRes.data ?? []) {
-      if (l.matches && counted(l.matches)) {
+      if (l.matches && inSeason(l.matches.match_date) && counted(l.matches)) {
         starts[l.player_id] = (starts[l.player_id] ?? 0) + 1;
       }
     }
@@ -83,7 +103,12 @@ export default function StatistiekenPage() {
     const playedScored: Record<string, number> = {};
     for (const l of lineupRes.data ?? []) {
       const m = l.matches;
-      if (m && m.score_for !== null && m.score_against !== null) {
+      if (
+        m &&
+        inSeason(m.match_date) &&
+        m.score_for !== null &&
+        m.score_against !== null
+      ) {
         playedScored[l.player_id] = (playedScored[l.player_id] ?? 0) + 1;
         if (m.score_for > m.score_against) {
           wins[l.player_id] = (wins[l.player_id] ?? 0) + 1;
@@ -107,7 +132,11 @@ export default function StatistiekenPage() {
         ),
     );
 
-    setMatchCount((matchesRes.data ?? []).filter(counted).length);
+    setMatchCount(
+      (matchesRes.data ?? []).filter(
+        (m) => inSeason(m.match_date) && counted(m),
+      ).length,
+    );
     setRows(
       (playersRes.data ?? [])
         .map((p) => ({
@@ -125,11 +154,13 @@ export default function StatistiekenPage() {
     // Bestaat de tabel nog niet (SQL niet gedraaid), dan blijft dit leeg.
     const { data: hl } = await supabase
       .from("highlights")
-      .select("player_id, kind, value");
+      .select("player_id, kind, value, matches(match_date)")
+      .returns<(Highlight & { matches: { match_date: string } | null })[]>();
     const nameOf = new Map((playersRes.data ?? []).map((p) => [p.id, p.name]));
     const counts: Record<string, number> = {};
     const fin: { name: string; value: number }[] = [];
-    for (const h of (hl as Highlight[] | null) ?? []) {
+    for (const h of hl ?? []) {
+      if (h.matches && !inSeason(h.matches.match_date)) continue;
       const name = nameOf.get(h.player_id) ?? "Onbekend";
       if (h.kind === "180") counts[name] = (counts[name] ?? 0) + 1;
       else if (h.value) fin.push({ name, value: h.value });
@@ -142,13 +173,23 @@ export default function StatistiekenPage() {
     // 501 en legs apart ophalen: bestaan de velden nog niet (SQL niet gedraaid), dan blijft dit leeg.
     const res = await supabase
       .from("lineup")
-      .select("player_id, won_501, legs_won, legs_lost");
+      .select("player_id, won_501, legs_won, legs_lost, matches(match_date)")
+      .returns<
+        {
+          player_id: string;
+          won_501: boolean | null;
+          legs_won: number | null;
+          legs_lost: number | null;
+          matches: { match_date: string } | null;
+        }[]
+      >();
     if (!res.error) {
       const per: Record<
         string,
         { won501: number; played501: number; won: number; lost: number }
       > = {};
       for (const r of res.data ?? []) {
+        if (r.matches && !inSeason(r.matches.match_date)) continue;
         const x = (per[r.player_id] ??= {
           won501: 0,
           played501: 0,
@@ -180,7 +221,7 @@ export default function StatistiekenPage() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [season]);
 
   // Bij gelijk aantal gewonnen wedstrijden: winstpercentage, dan 501 gewonnen, dan legs gewonnen, dan naam.
   const resultOf = new Map(results.map((r) => [r.name, r]));
@@ -222,6 +263,21 @@ export default function StatistiekenPage() {
           Ranglijst over {matchCount} gespeelde wedstrijden. Tik op een naam
           voor alle cijfers van die speler.
         </p>
+        {seasons.length > 0 && (
+          <select
+            value={season}
+            onChange={(e) => setSeason(e.target.value)}
+            aria-label="Seizoen"
+            className="mt-2 rounded border border-green-300 bg-white p-2 text-gray-900"
+          >
+            {seasons.map((y) => (
+              <option key={y} value={String(y)}>
+                Seizoen {y}/{y + 1}
+              </option>
+            ))}
+            <option value="all">Alle seizoenen</option>
+          </select>
+        )}
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
