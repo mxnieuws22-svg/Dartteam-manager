@@ -120,38 +120,40 @@ export default function Tournaments({ compact }: Props) {
       </h2>
 
       {isAdmin && !compact && (
-        <form
-          onSubmit={add}
-          className="space-y-3 rounded-lg border bg-white p-4"
-        >
-          <input
-            type="text"
-            placeholder="Naam (optioneel, bijv. Ranking 3)"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full rounded border border-green-300 p-2 text-gray-900"
-          />
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            required
-            className="w-full rounded border border-green-300 p-2 text-gray-900"
-          />
-          <input
-            type="text"
-            placeholder="Locatie (optioneel)"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            className="w-full rounded border border-green-300 p-2 text-gray-900"
-          />
-          <button
-            type="submit"
-            className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
-          >
-            Toernooi toevoegen
-          </button>
-        </form>
+        <details className="rounded-lg border bg-white p-4">
+          <summary className="cursor-pointer font-semibold text-green-700">
+            + Toernooi toevoegen
+          </summary>
+          <form onSubmit={add} className="mt-3 space-y-3">
+            <input
+              type="text"
+              placeholder="Naam (optioneel, bijv. Ranking 3)"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full rounded border border-green-300 p-2 text-gray-900"
+            />
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              required
+              className="w-full rounded border border-green-300 p-2 text-gray-900"
+            />
+            <input
+              type="text"
+              placeholder="Locatie (optioneel)"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              className="w-full rounded border border-green-300 p-2 text-gray-900"
+            />
+            <button
+              type="submit"
+              className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
+            >
+              Toernooi toevoegen
+            </button>
+          </form>
+        </details>
       )}
 
       {error && <p className="text-sm text-red-600">{error}</p>}

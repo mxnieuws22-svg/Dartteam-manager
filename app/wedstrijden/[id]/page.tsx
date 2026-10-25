@@ -55,6 +55,9 @@ function WedstrijdDetail() {
   const [editIsHome, setEditIsHome] = useState(true);
   const [editLocation, setEditLocation] = useState("");
   const [highlights, setHighlights] = useState<Highlight[]>([]);
+  const [tab, setTab] = useState<
+    "overzicht" | "kan" | "opstelling" | "uitslag" | "bewerken" | null
+  >(null);
   const [savedScores, setSavedScores] = useState(false);
   const [scores, setScores] = useState<Record<string, Score>>({});
   const [order, setOrder] = useState<string[]>([]);
@@ -443,6 +446,18 @@ function WedstrijdDetail() {
     setOrder(names);
   }
 
+  type Tab = "overzicht" | "kan" | "opstelling" | "uitslag" | "bewerken";
+  const tabList: { id: Tab; label: string }[] = [
+    { id: "overzicht", label: "Overzicht" },
+    ...(upcoming ? [{ id: "kan" as Tab, label: "Wie kan?" }] : []),
+    { id: "opstelling", label: "Opstelling" },
+    { id: "uitslag", label: "Uitslag" },
+    { id: "bewerken", label: "Bewerken" },
+  ];
+  // Beheerders zien tabbladen; bezoekers zien alleen het overzicht.
+  const active: Tab = tab ?? (upcoming ? "kan" : "overzicht");
+  const show = (t: Tab) => (isAdmin ? active === t : t === "overzicht");
+
   const starters = players.filter((p) => lineup[p.id] === "starter");
   const reserves = players.filter((p) => lineup[p.id] === "reserve");
 
@@ -469,175 +484,271 @@ function WedstrijdDetail() {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      {isAdmin && upcoming && match && (
-        <AskAvailability
-          opponent={match.opponent}
-          matchDate={match.match_date}
-          isHome={match.is_home}
-          players={players}
-          available={available}
-          maybe={maybe}
-        />
-      )}
-
-      {match && match.score_for !== null && match.score_against !== null && (
-        <div className="flex items-center gap-3">
-          <span className="font-semibold">Uitslag</span>
-          <ScoreBadge
-            scoreFor={match.score_for}
-            scoreAgainst={match.score_against}
-          />
-          <span className="text-sm text-green-900/60">
-            wij - {match.opponent || "tegenstander"}
-          </span>
+      {isAdmin && (
+        <div className="-mx-4 flex gap-1 overflow-x-auto border-b px-4">
+          {tabList.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`shrink-0 whitespace-nowrap border-b-2 px-3 py-2 text-sm font-semibold ${
+                active === t.id
+                  ? "border-green-700 text-green-700"
+                  : "border-transparent text-green-900/60"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
       )}
 
-      {isAdmin && upcoming && (
-        <section className="space-y-2 rounded border bg-white p-3">
-          <h2 className="font-semibold">Opstelling voorstellen</h2>
-          <p className="text-sm text-green-900/70">
-            Maakt een opstelling van wie kan: 4 in de basis en 1 reserve. Wie
-            tot nu toe het minst in de basis stond, gaat voor. Je kunt het
-            daarna zelf aanpassen.
-          </p>
-          <button
-            onClick={suggestLineup}
-            className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
-          >
-            Stel opstelling voor
-          </button>
-        </section>
+      {show("kan") && (
+        <>
+          {isAdmin && upcoming && match && (
+            <AskAvailability
+              opponent={match.opponent}
+              matchDate={match.match_date}
+              isHome={match.is_home}
+              players={players}
+              available={available}
+              maybe={maybe}
+            />
+          )}
+        </>
       )}
 
-      {starters.length + reserves.length === 0 ? (
-        <p className="text-green-900/70">De opstelling is nog niet bepaald.</p>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <h2 className="mb-1 font-semibold">Opstelling</h2>
-            <ul className="space-y-1">
-              {starters.map((p) => (
-                <li key={p.id} className="rounded bg-green-100 px-2 py-1">
-                  {p.name}
-                  {scoreText(p.id) && (
-                    <span className="block text-xs text-green-900/70">
-                      {scoreText(p.id)}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-          {reserves.length > 0 && (
-            <div>
-              <h2 className="mb-1 font-semibold">Reserve</h2>
-              <ul className="space-y-1">
-                {reserves.map((p) => (
-                  <li key={p.id} className="rounded border px-2 py-1">
-                    {p.name}
-                    {scoreText(p.id) && (
-                      <span className="block text-xs text-green-900/70">
-                        {scoreText(p.id)}
-                      </span>
-                    )}
-                  </li>
-                ))}
-              </ul>
+      {show("overzicht") && (
+        <>
+          {match &&
+            match.score_for !== null &&
+            match.score_against !== null && (
+              <div className="flex items-center gap-3">
+                <span className="font-semibold">Uitslag</span>
+                <ScoreBadge
+                  scoreFor={match.score_for}
+                  scoreAgainst={match.score_against}
+                />
+                <span className="text-sm text-green-900/60">
+                  wij - {match.opponent || "tegenstander"}
+                </span>
+              </div>
+            )}
+        </>
+      )}
+
+      {show("opstelling") && (
+        <>
+          {isAdmin && upcoming && (
+            <section className="space-y-2 rounded border bg-white p-3">
+              <h2 className="font-semibold">Opstelling voorstellen</h2>
+              <p className="text-sm text-green-900/70">
+                Maakt een opstelling van wie kan: 4 in de basis en 1 reserve.
+                Wie tot nu toe het minst in de basis stond, gaat voor. Je kunt
+                het daarna zelf aanpassen.
+              </p>
+              <button
+                onClick={suggestLineup}
+                className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
+              >
+                Stel opstelling voor
+              </button>
+            </section>
+          )}
+        </>
+      )}
+
+      {(show("overzicht") || show("opstelling")) && (
+        <>
+          {starters.length + reserves.length === 0 ? (
+            <p className="text-green-900/70">
+              De opstelling is nog niet bepaald.
+            </p>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <h2 className="mb-1 font-semibold">Opstelling</h2>
+                <ul className="space-y-1">
+                  {starters.map((p) => (
+                    <li key={p.id} className="rounded bg-green-100 px-2 py-1">
+                      {p.name}
+                      {scoreText(p.id) && (
+                        <span className="block text-xs text-green-900/70">
+                          {scoreText(p.id)}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              {reserves.length > 0 && (
+                <div>
+                  <h2 className="mb-1 font-semibold">Reserve</h2>
+                  <ul className="space-y-1">
+                    {reserves.map((p) => (
+                      <li key={p.id} className="rounded border px-2 py-1">
+                        {p.name}
+                        {scoreText(p.id) && (
+                          <span className="block text-xs text-green-900/70">
+                            {scoreText(p.id)}
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
-        </div>
+        </>
       )}
 
-      {isAdmin && starters.length + reserves.length > 0 && (
-        <details className="rounded border bg-white p-2">
-          <summary className="cursor-pointer font-semibold text-green-700">
-            Scores per speler invullen
-          </summary>
-          <form onSubmit={saveScores} className="mt-2 space-y-2">
-            <p className="text-sm text-green-900/70">
-              Of iemand zijn 501 won, en hoeveel legs hij won en verloor
-              (optioneel).
-            </p>
-            {[...starters, ...reserves].map((p) => {
-              const sc = scores[p.id] ?? { w501: "", won: "", lost: "" };
-              const set = (patch: Partial<Score>) => {
-                setSavedScores(false);
-                setScores((prev) => ({ ...prev, [p.id]: { ...sc, ...patch } }));
-              };
-              const field =
-                "w-16 rounded border border-green-300 p-2 text-gray-900";
-              return (
-                <div key={p.id} className="flex flex-wrap items-center gap-2">
-                  <span className="w-full truncate font-semibold">
-                    {p.name}
-                  </span>
-                  <select
-                    aria-label={`${p.name} 501`}
-                    value={sc.w501}
-                    onChange={(e) => set({ w501: e.target.value })}
-                    className="rounded border border-green-300 p-2 text-gray-900"
-                  >
-                    <option value="">501: nog niet ingevuld</option>
-                    <option value="won">501 gewonnen</option>
-                    <option value="lost">501 verloren</option>
-                  </select>
-                  <input
-                    type="number"
-                    min={0}
-                    inputMode="numeric"
-                    aria-label={`${p.name} legs gewonnen`}
-                    placeholder="Won"
-                    value={sc.won}
-                    onChange={(e) => set({ won: e.target.value })}
-                    className={field}
-                  />
-                  <input
-                    type="number"
-                    min={0}
-                    inputMode="numeric"
-                    aria-label={`${p.name} legs verloren`}
-                    placeholder="Verl."
-                    value={sc.lost}
-                    onChange={(e) => set({ lost: e.target.value })}
-                    className={field}
-                  />
-                </div>
-              );
-            })}
-            <button
-              type="submit"
-              className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
+      {show("uitslag") && (
+        <>
+          {isAdmin && (
+            <form
+              onSubmit={saveResult}
+              className="space-y-2 rounded border bg-white p-3"
             >
-              Opslaan
-            </button>
-            {savedScores && (
-              <span className="ml-2 text-sm text-green-700">Opgeslagen</span>
-            )}
-          </form>
-        </details>
-      )}
-
-      {isAdmin && starters.length > 1 && (
-        <section className="space-y-2 rounded border bg-white p-3">
-          <h2 className="font-semibold">Volgorde loten</h2>
-          <button
-            onClick={drawOrder}
-            className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
-          >
-            {order.length > 0 ? "Opnieuw loten" : "Loot de volgorde"}
-          </button>
-          {order.length > 0 && (
-            <ol className="list-inside list-decimal space-y-1 text-lg font-semibold">
-              {order.map((name) => (
-                <li key={name}>{name}</li>
-              ))}
-            </ol>
+              <h2 className="font-semibold">Uitslag invullen</h2>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  aria-label="Onze score"
+                  placeholder="Wij"
+                  value={scoreFor}
+                  onChange={(e) => setScoreFor(e.target.value)}
+                  className="w-20 rounded border border-green-300 p-2 text-gray-900"
+                />
+                <span>-</span>
+                <input
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  aria-label="Score tegenstander"
+                  placeholder="Zij"
+                  value={scoreAgainst}
+                  onChange={(e) => setScoreAgainst(e.target.value)}
+                  className="w-20 rounded border border-green-300 p-2 text-gray-900"
+                />
+                <button
+                  type="submit"
+                  className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
+                >
+                  Opslaan
+                </button>
+              </div>
+            </form>
           )}
-        </section>
+        </>
       )}
 
-      {(highlights.length > 0 || isAdmin) && (
+      {show("uitslag") && (
+        <>
+          {isAdmin && starters.length + reserves.length > 0 && (
+            <details className="rounded border bg-white p-2">
+              <summary className="cursor-pointer font-semibold text-green-700">
+                Scores per speler invullen
+              </summary>
+              <form onSubmit={saveScores} className="mt-2 space-y-2">
+                <p className="text-sm text-green-900/70">
+                  Of iemand zijn 501 won, en hoeveel legs hij won en verloor
+                  (optioneel).
+                </p>
+                {[...starters, ...reserves].map((p) => {
+                  const sc = scores[p.id] ?? { w501: "", won: "", lost: "" };
+                  const set = (patch: Partial<Score>) => {
+                    setSavedScores(false);
+                    setScores((prev) => ({
+                      ...prev,
+                      [p.id]: { ...sc, ...patch },
+                    }));
+                  };
+                  const field =
+                    "w-16 rounded border border-green-300 p-2 text-gray-900";
+                  return (
+                    <div
+                      key={p.id}
+                      className="flex flex-wrap items-center gap-2"
+                    >
+                      <span className="w-full truncate font-semibold">
+                        {p.name}
+                      </span>
+                      <select
+                        aria-label={`${p.name} 501`}
+                        value={sc.w501}
+                        onChange={(e) => set({ w501: e.target.value })}
+                        className="rounded border border-green-300 p-2 text-gray-900"
+                      >
+                        <option value="">501: nog niet ingevuld</option>
+                        <option value="won">501 gewonnen</option>
+                        <option value="lost">501 verloren</option>
+                      </select>
+                      <input
+                        type="number"
+                        min={0}
+                        inputMode="numeric"
+                        aria-label={`${p.name} legs gewonnen`}
+                        placeholder="Won"
+                        value={sc.won}
+                        onChange={(e) => set({ won: e.target.value })}
+                        className={field}
+                      />
+                      <input
+                        type="number"
+                        min={0}
+                        inputMode="numeric"
+                        aria-label={`${p.name} legs verloren`}
+                        placeholder="Verl."
+                        value={sc.lost}
+                        onChange={(e) => set({ lost: e.target.value })}
+                        className={field}
+                      />
+                    </div>
+                  );
+                })}
+                <button
+                  type="submit"
+                  className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
+                >
+                  Opslaan
+                </button>
+                {savedScores && (
+                  <span className="ml-2 text-sm text-green-700">
+                    Opgeslagen
+                  </span>
+                )}
+              </form>
+            </details>
+          )}
+        </>
+      )}
+
+      {show("opstelling") && (
+        <>
+          {isAdmin && starters.length > 1 && (
+            <section className="space-y-2 rounded border bg-white p-3">
+              <h2 className="font-semibold">Volgorde loten</h2>
+              <button
+                onClick={drawOrder}
+                className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
+              >
+                {order.length > 0 ? "Opnieuw loten" : "Loot de volgorde"}
+              </button>
+              {order.length > 0 && (
+                <ol className="list-inside list-decimal space-y-1 text-lg font-semibold">
+                  {order.map((name) => (
+                    <li key={name}>{name}</li>
+                  ))}
+                </ol>
+              )}
+            </section>
+          )}
+        </>
+      )}
+
+      {(isAdmin ? active === "uitslag" : highlights.length > 0) && (
         <section className="space-y-2 rounded border bg-white p-3">
           <h2 className="font-semibold">180&apos;s en hoge finishes</h2>
           {highlights.length === 0 && (
@@ -714,137 +825,109 @@ function WedstrijdDetail() {
         </section>
       )}
 
-      {isAdmin && (
-        <form
-          onSubmit={saveResult}
-          className="space-y-2 rounded border bg-white p-3"
-        >
-          <h2 className="font-semibold">Uitslag invullen</h2>
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              min={0}
-              inputMode="numeric"
-              aria-label="Onze score"
-              placeholder="Wij"
-              value={scoreFor}
-              onChange={(e) => setScoreFor(e.target.value)}
-              className="w-20 rounded border border-green-300 p-2 text-gray-900"
-            />
-            <span>-</span>
-            <input
-              type="number"
-              min={0}
-              inputMode="numeric"
-              aria-label="Score tegenstander"
-              placeholder="Zij"
-              value={scoreAgainst}
-              onChange={(e) => setScoreAgainst(e.target.value)}
-              className="w-20 rounded border border-green-300 p-2 text-gray-900"
-            />
-            <button
-              type="submit"
-              className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
-            >
-              Opslaan
-            </button>
-          </div>
-        </form>
-      )}
-
-      {isAdmin && (
-        <details className="rounded border bg-white p-2">
-          <summary className="cursor-pointer font-semibold text-green-700">
-            Wedstrijd bewerken
-          </summary>
-          <form onSubmit={saveMatch} className="mt-2 space-y-3">
-            <input
-              type="text"
-              placeholder="Tegenstander"
-              value={editOpponent}
-              onChange={(e) => setEditOpponent(e.target.value)}
-              required
-              className="w-full rounded border border-green-300 p-2 text-gray-900"
-            />
-            <input
-              type="date"
-              value={editDate}
-              onChange={(e) => setEditDate(e.target.value)}
-              required
-              className="w-full rounded border border-green-300 p-2 text-gray-900"
-            />
-            <select
-              value={editIsHome ? "home" : "away"}
-              onChange={(e) => setEditIsHome(e.target.value === "home")}
-              className="w-full rounded border border-green-300 p-2 text-gray-900"
-            >
-              <option value="home">Thuiswedstrijd</option>
-              <option value="away">Uitwedstrijd</option>
-            </select>
-            <input
-              type="text"
-              placeholder="Locatie (optioneel)"
-              value={editLocation}
-              onChange={(e) => setEditLocation(e.target.value)}
-              className="w-full rounded border border-green-300 p-2 text-gray-900"
-            />
-            <button
-              type="submit"
-              className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
-            >
-              Opslaan
-            </button>
-          </form>
-        </details>
-      )}
-
-      {isAdmin && (
-        <details className="rounded border bg-white p-2">
-          <summary className="cursor-pointer font-semibold text-green-700">
-            Opstelling aanpassen
-          </summary>
-          <ul className="mt-2 space-y-2">
-            {players.map((p) => {
-              const isAvailable = available[p.id] ?? false;
-              return (
-                <li
-                  key={p.id}
-                  className="flex items-center justify-between gap-2 rounded border bg-white p-2"
+      {show("bewerken") && (
+        <>
+          {isAdmin && (
+            <details open className="rounded border bg-white p-2">
+              <summary className="cursor-pointer font-semibold text-green-700">
+                Wedstrijd bewerken
+              </summary>
+              <form onSubmit={saveMatch} className="mt-2 space-y-3">
+                <input
+                  type="text"
+                  placeholder="Tegenstander"
+                  value={editOpponent}
+                  onChange={(e) => setEditOpponent(e.target.value)}
+                  required
+                  className="w-full rounded border border-green-300 p-2 text-gray-900"
+                />
+                <input
+                  type="date"
+                  value={editDate}
+                  onChange={(e) => setEditDate(e.target.value)}
+                  required
+                  className="w-full rounded border border-green-300 p-2 text-gray-900"
+                />
+                <select
+                  value={editIsHome ? "home" : "away"}
+                  onChange={(e) => setEditIsHome(e.target.value === "home")}
+                  className="w-full rounded border border-green-300 p-2 text-gray-900"
                 >
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={isAvailable}
-                      disabled={!isAdmin}
-                      onChange={(e) => setAvailability(p.id, e.target.checked)}
-                    />
-                    {p.name}
-                    {!p.is_active && (
-                      <span className="text-xs text-green-900/60">
-                        (niet meer in team)
-                      </span>
-                    )}
-                    {p.is_reserve && (
-                      <span className="text-xs text-green-900/60">
-                        (reserve)
-                      </span>
-                    )}
-                  </label>
-                  <select
-                    value={lineup[p.id] ?? "none"}
-                    disabled={!isAdmin}
-                    onChange={(e) => setRole(p.id, e.target.value as Role)}
-                    className="rounded border border-green-300 p-1 text-gray-900"
-                  >
-                    <option value="none">Niet opgesteld</option>
-                    <option value="starter">Basis</option>
-                    <option value="reserve">Reserve</option>
-                  </select>
-                </li>
-              );
-            })}
-          </ul>
-        </details>
+                  <option value="home">Thuiswedstrijd</option>
+                  <option value="away">Uitwedstrijd</option>
+                </select>
+                <input
+                  type="text"
+                  placeholder="Locatie (optioneel)"
+                  value={editLocation}
+                  onChange={(e) => setEditLocation(e.target.value)}
+                  className="w-full rounded border border-green-300 p-2 text-gray-900"
+                />
+                <button
+                  type="submit"
+                  className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
+                >
+                  Opslaan
+                </button>
+              </form>
+            </details>
+          )}
+        </>
+      )}
+
+      {show("opstelling") && (
+        <>
+          {isAdmin && (
+            <details className="rounded border bg-white p-2">
+              <summary className="cursor-pointer font-semibold text-green-700">
+                Opstelling aanpassen
+              </summary>
+              <ul className="mt-2 space-y-2">
+                {players.map((p) => {
+                  const isAvailable = available[p.id] ?? false;
+                  return (
+                    <li
+                      key={p.id}
+                      className="flex items-center justify-between gap-2 rounded border bg-white p-2"
+                    >
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={isAvailable}
+                          disabled={!isAdmin}
+                          onChange={(e) =>
+                            setAvailability(p.id, e.target.checked)
+                          }
+                        />
+                        {p.name}
+                        {!p.is_active && (
+                          <span className="text-xs text-green-900/60">
+                            (niet meer in team)
+                          </span>
+                        )}
+                        {p.is_reserve && (
+                          <span className="text-xs text-green-900/60">
+                            (reserve)
+                          </span>
+                        )}
+                      </label>
+                      <select
+                        value={lineup[p.id] ?? "none"}
+                        disabled={!isAdmin}
+                        onChange={(e) => setRole(p.id, e.target.value as Role)}
+                        className="rounded border border-green-300 p-1 text-gray-900"
+                      >
+                        <option value="none">Niet opgesteld</option>
+                        <option value="starter">Basis</option>
+                        <option value="reserve">Reserve</option>
+                      </select>
+                    </li>
+                  );
+                })}
+              </ul>
+            </details>
+          )}
+        </>
       )}
     </main>
   );

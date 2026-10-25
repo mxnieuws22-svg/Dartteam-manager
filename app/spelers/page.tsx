@@ -158,87 +158,98 @@ export default function SpelersPage() {
       <h1 className="text-2xl font-bold">Spelers</h1>
 
       {isAdmin && (
-        <form
-          onSubmit={addPlayer}
-          className="space-y-3 rounded-lg border bg-white p-4"
-        >
-          <input
-            type="text"
-            placeholder="Naam van de speler"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            className="w-full rounded border border-green-300 p-2 text-gray-900"
-          />
-          <label className="flex items-center gap-2">
+        <details className="rounded-lg border bg-white p-4">
+          <summary className="cursor-pointer font-semibold text-green-700">
+            + Speler toevoegen
+          </summary>
+          <form onSubmit={addPlayer} className="mt-3 space-y-3">
             <input
-              type="checkbox"
-              checked={isReserve}
-              onChange={(e) => setIsReserve(e.target.checked)}
+              type="text"
+              placeholder="Naam van de speler"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              className="w-full rounded border border-green-300 p-2 text-gray-900"
             />
-            Reserve
-          </label>
-          <button
-            type="submit"
-            className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
-          >
-            Toevoegen
-          </button>
-        </form>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={isReserve}
+                onChange={(e) => setIsReserve(e.target.checked)}
+              />
+              Reserve
+            </label>
+            <button
+              type="submit"
+              className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
+            >
+              Toevoegen
+            </button>
+          </form>
+        </details>
       )}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      {isAdmin && <PushToggle />}
+      {isAdmin && (
+        <details className="rounded-lg border bg-white p-4">
+          <summary className="cursor-pointer font-semibold text-green-700">
+            Meldingen en links voor de groepsapp
+          </summary>
+          <div className="mt-3 space-y-4">
+            <PushToggle />
+            {teamToken && (
+              <section className="space-y-2 rounded-lg border bg-white p-4">
+                <h2 className="font-semibold">Link voor de groepsapp</h2>
+                <p className="text-sm text-green-900/70">
+                  Eén link voor iedereen: spelers kiezen hun naam en geven aan
+                  of ze kunnen.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={copyGroupLink}
+                    className="rounded border border-green-300 px-4 py-2 text-sm font-semibold text-green-900"
+                  >
+                    {copied === "groep" ? "Gekopieerd!" : "Kopieer link"}
+                  </button>
+                  <button
+                    onClick={whatsappGroup}
+                    className="rounded bg-green-700 px-4 py-2 text-sm font-semibold text-white"
+                  >
+                    Deel via WhatsApp
+                  </button>
+                </div>
+              </section>
+            )}
 
-      {isAdmin && teamToken && (
-        <section className="space-y-2 rounded-lg border bg-white p-4">
-          <h2 className="font-semibold">Link voor de groepsapp</h2>
-          <p className="text-sm text-green-900/70">
-            Eén link voor iedereen: spelers kiezen hun naam en geven aan of ze
-            kunnen.
-          </p>
-          <div className="flex gap-2">
-            <button
-              onClick={copyGroupLink}
-              className="rounded border border-green-300 px-4 py-2 text-sm font-semibold text-green-900"
-            >
-              {copied === "groep" ? "Gekopieerd!" : "Kopieer link"}
-            </button>
-            <button
-              onClick={whatsappGroup}
-              className="rounded bg-green-700 px-4 py-2 text-sm font-semibold text-white"
-            >
-              Deel via WhatsApp
-            </button>
+            {withLink.length > 0 && (
+              <section className="space-y-2 rounded-lg border bg-white p-4">
+                <h2 className="font-semibold">Vaste lijst met namen</h2>
+                <p className="text-sm text-green-900/70">
+                  Eén bericht met per naam een eigen link. Zet het één keer vast
+                  in de groep: iedereen tikt op zijn eigen naam en hoeft nooit
+                  meer een naam te kiezen. De links werken voor alle
+                  wedstrijden. Let op: iedereen in de groep ziet daarmee ook de
+                  links van de anderen.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={copyNames}
+                    className="rounded border border-green-300 px-4 py-2 text-sm font-semibold text-green-900"
+                  >
+                    {copied === "namen" ? "Gekopieerd!" : "Kopieer lijst"}
+                  </button>
+                  <button
+                    onClick={whatsappNames}
+                    className="rounded bg-green-700 px-4 py-2 text-sm font-semibold text-white"
+                  >
+                    Deel lijst via WhatsApp
+                  </button>
+                </div>
+              </section>
+            )}
           </div>
-        </section>
-      )}
-
-      {isAdmin && withLink.length > 0 && (
-        <section className="space-y-2 rounded-lg border bg-white p-4">
-          <h2 className="font-semibold">Vaste lijst met namen</h2>
-          <p className="text-sm text-green-900/70">
-            Eén bericht met per naam een eigen link. Zet het één keer vast in de
-            groep: iedereen tikt op zijn eigen naam en hoeft nooit meer een naam
-            te kiezen. De links werken voor alle wedstrijden. Let op: iedereen
-            in de groep ziet daarmee ook de links van de anderen.
-          </p>
-          <div className="flex gap-2">
-            <button
-              onClick={copyNames}
-              className="rounded border border-green-300 px-4 py-2 text-sm font-semibold text-green-900"
-            >
-              {copied === "namen" ? "Gekopieerd!" : "Kopieer lijst"}
-            </button>
-            <button
-              onClick={whatsappNames}
-              className="rounded bg-green-700 px-4 py-2 text-sm font-semibold text-white"
-            >
-              Deel lijst via WhatsApp
-            </button>
-          </div>
-        </section>
+        </details>
       )}
 
       <section>
