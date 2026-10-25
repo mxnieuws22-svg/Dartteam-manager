@@ -150,8 +150,24 @@ export default function SpelersPage() {
     loadPlayers();
   }
 
-  const starters = players.filter((p) => !p.is_reserve);
-  const reserves = players.filter((p) => p.is_reserve);
+  async function setActive(p: Player, active: boolean) {
+    setError("");
+    const { error } = await supabase
+      .from("players")
+      .update({ is_active: active })
+      .eq("id", p.id);
+
+    if (error) {
+      setError("Opslaan mislukt.");
+      return;
+    }
+    loadPlayers();
+  }
+
+  const starters = players.filter((p) => p.is_active && !p.is_reserve);
+  const reserves = players.filter((p) => p.is_active && p.is_reserve);
+  // Wie het team heeft verlaten blijft in de geschiedenis en statistieken staan.
+  const inactive = players.filter((p) => !p.is_active);
 
   return (
     <main className="mx-auto max-w-2xl space-y-6 p-4">
@@ -282,10 +298,10 @@ export default function SpelersPage() {
                     </>
                   )}
                   <button
-                    onClick={() => deletePlayer(p.id)}
-                    className="text-red-600"
+                    onClick={() => setActive(p, false)}
+                    className="text-green-700"
                   >
-                    Verwijderen
+                    Uit het team
                   </button>
                 </div>
               )}
@@ -324,10 +340,10 @@ export default function SpelersPage() {
                     </>
                   )}
                   <button
-                    onClick={() => deletePlayer(p.id)}
-                    className="text-red-600"
+                    onClick={() => setActive(p, false)}
+                    className="text-green-700"
                   >
-                    Verwijderen
+                    Uit het team
                   </button>
                 </div>
               )}
@@ -335,6 +351,44 @@ export default function SpelersPage() {
           ))}
         </ul>
       </section>
+
+      {inactive.length > 0 && (
+        <details className="rounded-lg border bg-white p-4">
+          <summary className="cursor-pointer font-semibold text-green-900/70">
+            Niet meer in het team ({inactive.length})
+          </summary>
+          <p className="mt-2 text-sm text-green-900/70">
+            Hun wedstrijden en statistieken blijven bewaard. Ze krijgen geen
+            vragen meer over beschikbaarheid.
+          </p>
+          <ul className="mt-2 space-y-2">
+            {inactive.map((p) => (
+              <li
+                key={p.id}
+                className="flex items-center justify-between gap-3 rounded border p-2"
+              >
+                {p.name}
+                {isAdmin && (
+                  <div className="flex items-center gap-3 text-sm">
+                    <button
+                      onClick={() => setActive(p, true)}
+                      className="text-green-700"
+                    >
+                      Terugzetten
+                    </button>
+                    <button
+                      onClick={() => deletePlayer(p.id)}
+                      className="text-red-600"
+                    >
+                      Verwijderen
+                    </button>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </main>
   );
 }

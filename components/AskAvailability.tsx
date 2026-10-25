@@ -89,6 +89,8 @@ export default function AskAvailability({
 
   const active = players.filter((p) => p.is_active !== false);
   const askable = active.filter((p) => tokens[p.id]);
+  // Wie nog helemaal niet gereageerd heeft.
+  const noReply = active.filter((p) => !(p.id in available));
 
   return (
     <>
@@ -123,6 +125,18 @@ export default function AskAvailability({
             >
               Meld wedstrijd in de groep
             </button>
+            {noReply.length > 0 && (
+              <button
+                onClick={() =>
+                  whatsApp(
+                    `Herinnering: ${isHome ? "thuiswedstrijd" : "uitwedstrijd"} tegen ${opponentName} op ${longDate()}. Nog niet gereageerd: ${noReply.map((p) => p.name).join(", ")}. Geef het even door via de vaste link: ${fixedLink()}`,
+                  )
+                }
+                className="w-full rounded border border-green-300 px-4 py-2 font-semibold text-green-900"
+              >
+                Herinner wie nog niet gereageerd heeft ({noReply.length})
+              </button>
+            )}
           </div>
 
           <details className="border-t pt-3">
