@@ -71,13 +71,26 @@ export async function POST(request: Request) {
     day: "numeric",
     month: "long",
   });
+  // Staat de speler in de opstelling en kan die niet (of weet het niet zeker), dan staat dat in de melding.
+  let warning = "";
+  if (!info.is_available) {
+    const { data: lineup } = await supabase
+      .from("lineup")
+      .select("is_starter, players(name)")
+      .eq("match_id", matchId)
+      .returns<{ is_starter: boolean; players: { name: string } | null }[]>();
+    const row = (lineup ?? []).find((l) => l.players?.name === info.player);
+    if (row) {
+      warning = `Staat ${row.is_starter ? "in de basis" : "als reserve"}! · `;
+    }
+  }
   const payload = JSON.stringify({
     title: info.is_maybe
       ? `${info.player} weet het nog niet`
       : info.is_available
         ? `${info.player} kan`
         : `${info.player} kan niet`,
-    body: `${info.opponent || "Wedstrijd"} · ${date}`,
+    body: `${warning}${info.opponent || "Wedstrijd"} · ${date}`,
     url: `/wedstrijden/${matchId}`,
   });
 

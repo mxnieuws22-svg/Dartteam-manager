@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import AskAvailability from "@/components/AskAvailability";
+import LineupWarning from "@/components/LineupWarning";
 import Tournaments from "@/components/Tournaments";
 import ScoreBadge from "@/components/ScoreBadge";
 import { useIsAdmin } from "@/lib/useIsAdmin";
@@ -277,6 +278,16 @@ export default function Home() {
                   </ul>
                 </div>
               </div>
+            )}
+
+            {isAdmin && (
+              <LineupWarning
+                players={players}
+                roles={roles}
+                available={availability}
+                maybe={maybe}
+                onRemove={(id) => setRole(id, "none")}
+              />
             )}
 
             {isAdmin && (
