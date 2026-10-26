@@ -298,7 +298,6 @@ export default function StatistiekenPage() {
                 <tr>
                   <th className={th}>#</th>
                   <th className={`${th} text-left`}>Speler</th>
-                  <th className={th}>Gewonnen</th>
                   {showResults && <th className={th}>501</th>}
                   {showResults && <th className={th}>Legs</th>}
                   {showEighties && <th className={th}>180</th>}
@@ -332,10 +331,6 @@ export default function StatistiekenPage() {
                           niet meer in team
                         </span>
                       )}
-                    </td>
-                    <td className={td}>
-                      <span className="font-bold">{r.wins}</span>
-                      <span className="text-green-900/60"> / {r.played}</span>
                     </td>
                     {showResults && (
                       <td className={td}>
@@ -378,10 +373,9 @@ export default function StatistiekenPage() {
             </table>
           </div>
           <p className="text-xs text-green-900/60">
-            Gewonnen: wedstrijden die het team won met hem in de basis, van het
-            aantal gespeelde wedstrijden met uitslag. 501: gewonnen van
-            gespeeld. Legs: gewonnen - verloren. Finish: hoogste finish. Basis:
-            keer in de basis.
+            De volgorde is op gewonnen wedstrijden met de speler in de basis.
+            501: gewonnen van gespeeld. Legs: gewonnen - verloren. Finish:
+            hoogste finish. Basis: keer in de basis.
           </p>
         </section>
       )}
