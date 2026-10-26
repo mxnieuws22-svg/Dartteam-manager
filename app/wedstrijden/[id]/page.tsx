@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import AskAvailability from "@/components/AskAvailability";
+import LineupWarning from "@/components/LineupWarning";
 import ScoreBadge from "@/components/ScoreBadge";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 
@@ -500,6 +501,16 @@ function WedstrijdDetail() {
             </button>
           ))}
         </div>
+      )}
+
+      {isAdmin && upcoming && (
+        <LineupWarning
+          players={players}
+          roles={lineup}
+          available={available}
+          maybe={maybe}
+          onRemove={(id) => setRole(id, "none")}
+        />
       )}
 
       {show("kan") && (
