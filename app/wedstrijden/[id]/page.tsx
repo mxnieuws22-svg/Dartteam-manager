@@ -319,6 +319,19 @@ function WedstrijdDetail() {
     setHighlights((prev) => prev.filter((h) => h.id !== highlightId));
   }
 
+  // Haalt iedereen uit de opstelling van deze wedstrijd. Wat spelers hebben doorgegeven blijft staan.
+  async function clearLineup() {
+    if (!confirm("De hele opstelling van deze wedstrijd wissen?")) return;
+    setError("");
+    const { error } = await supabase.from("lineup").delete().eq("match_id", id);
+    if (error) {
+      setError("Opstelling wissen mislukt.");
+      return;
+    }
+    setLineup({});
+    setOrder([]);
+  }
+
   // Stelt de opstelling samen uit wie kan: 4 in de basis en 1 reserve.
   // Wie tot nu toe het minst in de basis stond, gaat voor.
   async function suggestLineup() {
@@ -576,6 +589,14 @@ function WedstrijdDetail() {
               >
                 Stel opstelling voor
               </button>
+              {Object.keys(lineup).length > 0 && (
+                <button
+                  onClick={clearLineup}
+                  className="ml-2 rounded border border-red-300 px-4 py-2 font-semibold text-red-700"
+                >
+                  Opstelling wissen
+                </button>
+              )}
             </section>
           )}
         </>
