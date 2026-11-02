@@ -332,6 +332,16 @@ export default function Home() {
 
       {isAdmin && match && (
         <AskAvailability
+          matchId={match.id}
+          onAnswered={(id, answer) => {
+            setAvailability((prev) => {
+              const next = { ...prev };
+              if (answer === "open") delete next[id];
+              else next[id] = answer === "yes";
+              return next;
+            });
+            setMaybe((prev) => ({ ...prev, [id]: answer === "maybe" }));
+          }}
           opponent={match.opponent}
           matchDate={match.match_date}
           isHome={match.is_home}

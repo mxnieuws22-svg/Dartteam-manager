@@ -517,6 +517,19 @@ function WedstrijdDetail() {
         <>
           {isAdmin && upcoming && match && (
             <AskAvailability
+              matchId={id}
+              onAnswered={(playerId, answer) => {
+                setAvailable((prev) => {
+                  const next = { ...prev };
+                  if (answer === "open") delete next[playerId];
+                  else next[playerId] = answer === "yes";
+                  return next;
+                });
+                setMaybe((prev) => ({
+                  ...prev,
+                  [playerId]: answer === "maybe",
+                }));
+              }}
               opponent={match.opponent}
               matchDate={match.match_date}
               isHome={match.is_home}
