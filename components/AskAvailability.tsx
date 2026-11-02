@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { type Answer } from "@/components/AnswerButtons";
 import AvailabilityOverview from "@/components/AvailabilityOverview";
 import { dateCode, encodeToken } from "@/lib/links";
 import { createClient } from "@/lib/supabase/client";
@@ -8,6 +9,9 @@ import { createClient } from "@/lib/supabase/client";
 type Player = { id: string; name: string; is_active?: boolean };
 
 type Props = {
+  matchId: string;
+  // Wordt aangeroepen nadat de beheerder zelf een antwoord heeft ingevuld.
+  onAnswered?: (playerId: string, answer: Answer | "open") => void;
   opponent: string | null;
   matchDate: string;
   isHome: boolean;
@@ -20,6 +24,8 @@ type Props = {
 
 // Voor de beheerder: de groepslink en de persoonlijke links om te vragen wie er kan bij één wedstrijd.
 export default function AskAvailability({
+  matchId,
+  onAnswered,
   opponent,
   matchDate,
   isHome,
@@ -31,6 +37,7 @@ export default function AskAvailability({
   const [teamToken, setTeamToken] = useState("");
   const [tokens, setTokens] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState("");
+  const [saveError, setSaveError] = useState("");
 
   useEffect(() => {
     supabase
@@ -68,6 +75,37 @@ export default function AskAvailability({
     setTimeout(() => setCopied(""), 2000);
   }
 
+  // De beheerder vult zelf in wat een speler heeft doorgegeven (bijvoorbeeld via een appje).
+  async function setAnswer(playerId: string, answer: Answer | "open") {
+    setSaveError("");
+    let error;
+    if (answer === "open") {
+      ({ error } = await supabase
+        .from("availability")
+        .delete()
+        .eq("match_id", matchId)
+        .eq("player_id", playerId));
+    } else {
+      const row = {
+        match_id: matchId,
+        player_id: playerId,
+        is_available: answer === "yes",
+      };
+      ({ error } = await supabase
+        .from("availability")
+        .upsert({ ...row, is_maybe: answer === "maybe" }));
+      // Bestaat "nog niet zeker" nog niet (SQL niet bijgewerkt), dan kan ja en nee nog wel.
+      if (error && answer !== "maybe") {
+        ({ error } = await supabase.from("availability").upsert(row));
+      }
+    }
+    if (error) {
+      setSaveError("Opslaan mislukt.");
+      return;
+    }
+    onAnswered?.(playerId, answer);
+  }
+
   function whatsApp(text: string) {
     window.open(
       `https://wa.me/?text=${encodeURIComponent(text)}`,
@@ -102,6 +140,63 @@ export default function AskAvailability({
             answers={available}
             maybe={maybe}
           />
+          <details className="border-t pt-3">
+            <summary className="cursor-pointer text-sm font-semibold text-green-700">
+              Zelf invullen
+            </summary>
+            <p className="mt-2 text-sm text-green-900/70">
+              Heeft iemand het je gezegd of geappt? Tik hier het antwoord in.
+            </p>
+            {saveError && <p className="text-sm text-red-600">{saveError}</p>}
+            <ul className="mt-2 space-y-2">
+              {active.map((p) => {
+                const current: Answer | "open" =
+                  maybe?.[p.id] === true
+                    ? "maybe"
+                    : p.id in available
+                      ? available[p.id]
+                        ? "yes"
+                        : "no"
+                      : "open";
+                const button = (
+                  value: Answer | "open",
+                  label: string,
+                  on: string,
+                ) => (
+                  <button
+                    onClick={() => setAnswer(p.id, value)}
+                    aria-label={`${p.name}: ${label}`}
+                    aria-pressed={current === value}
+                    className={`rounded px-2.5 py-1.5 text-sm font-semibold ${
+                      current === value
+                        ? on
+                        : "border border-green-300 text-green-900"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+                return (
+                  <li
+                    key={p.id}
+                    className="flex flex-wrap items-center justify-between gap-2"
+                  >
+                    <span className="font-semibold">{p.name}</span>
+                    <span className="flex gap-1">
+                      {button("yes", "Kan", "bg-green-700 text-white")}
+                      {button("no", "Niet", "bg-red-600 text-white")}
+                      {button(
+                        "maybe",
+                        "Twijfel",
+                        "bg-amber-400 text-amber-950",
+                      )}
+                      {button("open", "Open", "bg-green-100 text-green-900")}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </details>
         </section>
       )}
 
