@@ -449,8 +449,9 @@ export default function StatistiekenPage() {
           <p className="text-xs text-green-900/60">
             De volgorde is op gewonnen wedstrijden met de speler in de basis.
             501: gewonnen van gespeeld. Legs: gewonnen - verloren. Finish:
-            hoogste finish. Koppel: koppels gewonnen van gespeeld. Basis: keer
-            in de basis.
+            hoogste finish. Koppel: koppels gewonnen van gespeeld; die tellen
+            niet mee voor de volgorde en niet voor 501 of legs. Basis: keer in
+            de basis.
           </p>
         </section>
       )}
