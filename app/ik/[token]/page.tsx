@@ -181,6 +181,9 @@ function Beschikbaarheid() {
         <p className="text-green-900/70">
           Geef hieronder aan of je kunt. Je kunt het later nog wijzigen.
         </p>
+        <p className="mt-1 text-sm text-green-900/60">
+          Deze link is alleen voor jou. Deel hem niet met anderen.
+        </p>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
