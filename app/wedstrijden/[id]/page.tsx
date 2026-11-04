@@ -62,7 +62,6 @@ function WedstrijdDetail() {
   const [savedScores, setSavedScores] = useState(false);
   const [scores, setScores] = useState<Record<string, Score>>({});
   const [order, setOrder] = useState<string[]>([]);
-  const [secondReserve, setSecondReserve] = useState(false);
   const [hlPlayer, setHlPlayer] = useState("");
   const [hlKind, setHlKind] = useState<"180" | "finish">("180");
   const [hlValue, setHlValue] = useState("");
@@ -381,7 +380,7 @@ function WedstrijdDetail() {
           (starts[a.id] ?? 0) - (starts[b.id] ?? 0) ||
           a.name.localeCompare(b.name),
       )
-      .slice(0, secondReserve ? 6 : 5);
+      .slice(0, 6);
     const rows = chosen.map((p, i) => ({
       match_id: id,
       player_id: p.id,
@@ -581,17 +580,10 @@ function WedstrijdDetail() {
               <h2 className="font-semibold">Opstelling voorstellen</h2>
               <p className="text-sm text-green-900/70">
                 Maakt een opstelling van wie kan: 4 in de basis en 1 reserve, en
-                eventueel een 2e reserve. Wie tot nu toe het minst in de basis
-                stond, gaat voor. Je kunt het daarna zelf aanpassen.
+                een 2e reserve als er genoeg mensen kunnen. Wie tot nu toe het
+                minst in de basis stond, gaat voor. Je kunt het daarna zelf
+                aanpassen.
               </p>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={secondReserve}
-                  onChange={(e) => setSecondReserve(e.target.checked)}
-                />
-                Met een 2e reserve
-              </label>
               <button
                 onClick={suggestLineup}
                 className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
