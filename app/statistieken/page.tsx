@@ -35,6 +35,12 @@ export default function StatistiekenPage() {
   const [oneEighties, setOneEighties] = useState<
     { name: string; count: number }[]
   >([]);
+  const [pairStats, setPairStats] = useState<
+    Record<string, { won: number; played: number }>
+  >({});
+  const [bestPairs, setBestPairs] = useState<
+    { names: string; won: number; played: number }[]
+  >([]);
   const [finishes, setFinishes] = useState<{ name: string; value: number }[]>(
     [],
   );
@@ -216,6 +222,56 @@ export default function StatistiekenPage() {
       );
     }
     setFinishes(fin.sort((a, b) => b.value - a.value));
+
+    // Koppels apart ophalen: bestaat de tabel nog niet (SQL niet gedraaid), dan blijft dit leeg.
+    const pr = await supabase
+      .from("pairs")
+      .select("player_a, player_b, won, matches(match_date)")
+      .returns<
+        {
+          player_a: string;
+          player_b: string;
+          won: boolean | null;
+          matches: { match_date: string } | null;
+        }[]
+      >();
+    if (!pr.error) {
+      const perPlayer: Record<string, { won: number; played: number }> = {};
+      const perPair: Record<
+        string,
+        { names: string; won: number; played: number }
+      > = {};
+      for (const r of pr.data ?? []) {
+        if (r.won === null) continue;
+        if (r.matches && !inSeason(r.matches.match_date)) continue;
+        const a = nameOf.get(r.player_a) ?? "Onbekend";
+        const b = nameOf.get(r.player_b) ?? "Onbekend";
+        for (const n of [a, b]) {
+          const x = (perPlayer[n] ??= { won: 0, played: 0 });
+          x.played += 1;
+          if (r.won) x.won += 1;
+        }
+        const key = [r.player_a, r.player_b].sort().join("|");
+        const y = (perPair[key] ??= {
+          names: [a, b].sort((m, n) => m.localeCompare(n)).join(" & "),
+          won: 0,
+          played: 0,
+        });
+        y.played += 1;
+        if (r.won) y.won += 1;
+      }
+      setPairStats(perPlayer);
+      setBestPairs(
+        Object.values(perPair)
+          .sort(
+            (x, y) =>
+              y.won - x.won ||
+              y.won / y.played - x.won / x.played ||
+              x.names.localeCompare(y.names),
+          )
+          .slice(0, 5),
+      );
+    }
   }
 
   useEffect(() => {
@@ -243,6 +299,7 @@ export default function StatistiekenPage() {
         res,
         eighties: eightiesOf.get(r.name) ?? 0,
         finish: bestFinishOf.get(r.name),
+        pair: pairStats[r.name],
       };
     })
     .sort(
@@ -258,6 +315,7 @@ export default function StatistiekenPage() {
   const showResults = results.length > 0;
   const showEighties = oneEighties.length > 0;
   const showFinishes = finishes.length > 0;
+  const showPairs = bestPairs.length > 0;
 
   const th = "px-2 py-2 text-center font-semibold";
   const td = "px-2 py-2 text-center";
@@ -302,6 +360,7 @@ export default function StatistiekenPage() {
                   {showResults && <th className={th}>Legs</th>}
                   {showEighties && <th className={th}>180</th>}
                   {showFinishes && <th className={th}>Finish</th>}
+                  {showPairs && <th className={th}>Koppel</th>}
                   <th className={th}>Basis</th>
                 </tr>
               </thead>
@@ -366,6 +425,21 @@ export default function StatistiekenPage() {
                       <td className={td}>{r.eighties || "-"}</td>
                     )}
                     {showFinishes && <td className={td}>{r.finish ?? "-"}</td>}
+                    {showPairs && (
+                      <td className={td}>
+                        {r.pair ? (
+                          <>
+                            <span className="font-bold">{r.pair.won}</span>
+                            <span className="text-green-900/60">
+                              {" "}
+                              / {r.pair.played}
+                            </span>
+                          </>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                    )}
                     <td className={td}>{r.starts}x</td>
                   </tr>
                 ))}
@@ -375,8 +449,31 @@ export default function StatistiekenPage() {
           <p className="text-xs text-green-900/60">
             De volgorde is op gewonnen wedstrijden met de speler in de basis.
             501: gewonnen van gespeeld. Legs: gewonnen - verloren. Finish:
-            hoogste finish. Basis: keer in de basis.
+            hoogste finish. Koppel: koppels gewonnen van gespeeld. Basis: keer
+            in de basis.
           </p>
+        </section>
+      )}
+
+      {bestPairs.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-lg font-bold">Beste koppels</h2>
+          <ul className="space-y-2">
+            {bestPairs.map((r) => (
+              <li
+                key={r.names}
+                className="flex items-center justify-between gap-3 rounded-lg border bg-white p-3"
+              >
+                <span className="font-semibold">{r.names}</span>
+                <span className="text-right text-sm">
+                  <span className="font-bold">{r.won}</span> gewonnen
+                  <span className="block text-green-900/60">
+                    van {r.played} gespeeld
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 
