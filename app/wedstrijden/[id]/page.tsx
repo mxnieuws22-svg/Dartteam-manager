@@ -380,7 +380,7 @@ function WedstrijdDetail() {
           (starts[a.id] ?? 0) - (starts[b.id] ?? 0) ||
           a.name.localeCompare(b.name),
       )
-      .slice(0, 5);
+      .slice(0, 6);
     const rows = chosen.map((p, i) => ({
       match_id: id,
       player_id: p.id,
@@ -579,9 +579,10 @@ function WedstrijdDetail() {
             <section className="space-y-2 rounded border bg-white p-3">
               <h2 className="font-semibold">Opstelling voorstellen</h2>
               <p className="text-sm text-green-900/70">
-                Maakt een opstelling van wie kan: 4 in de basis en 1 reserve.
-                Wie tot nu toe het minst in de basis stond, gaat voor. Je kunt
-                het daarna zelf aanpassen.
+                Maakt een opstelling van wie kan: 4 in de basis en 1 reserve, en
+                een 2e reserve als er genoeg mensen kunnen. Wie tot nu toe het
+                minst in de basis stond, gaat voor. Je kunt het daarna zelf
+                aanpassen.
               </p>
               <button
                 onClick={suggestLineup}
