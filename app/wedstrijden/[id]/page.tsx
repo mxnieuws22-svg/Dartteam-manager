@@ -6,6 +6,7 @@ import { Suspense, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import AskAvailability from "@/components/AskAvailability";
 import LineupWarning from "@/components/LineupWarning";
+import Pairs from "@/components/Pairs";
 import ScoreBadge from "@/components/ScoreBadge";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 
@@ -472,6 +473,11 @@ function WedstrijdDetail() {
   const active: Tab = tab ?? (upcoming ? "kan" : "overzicht");
   const show = (t: Tab) => (isAdmin ? active === t : t === "overzicht");
 
+  // Voor de koppels: eerst wie er speelde, daarna de rest van het team.
+  const pairPlayers = [
+    ...players.filter((p) => lineup[p.id]),
+    ...players.filter((p) => !lineup[p.id] && p.is_active),
+  ];
   const starters = players.filter((p) => lineup[p.id] === "starter");
   const reserves = players.filter((p) => lineup[p.id] === "reserve");
 
@@ -648,6 +654,8 @@ function WedstrijdDetail() {
         </>
       )}
 
+      {show("overzicht") && <Pairs matchId={id} players={pairPlayers} />}
+
       {show("uitslag") && (
         <>
           {isAdmin && (
@@ -688,6 +696,10 @@ function WedstrijdDetail() {
             </form>
           )}
         </>
+      )}
+
+      {show("uitslag") && isAdmin && (
+        <Pairs matchId={id} players={pairPlayers} editable />
       )}
 
       {show("uitslag") && (
