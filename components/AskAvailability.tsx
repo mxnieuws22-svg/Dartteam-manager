@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { type Answer } from "@/components/AnswerButtons";
+import AvailabilityLog from "@/components/AvailabilityLog";
 import AvailabilityOverview from "@/components/AvailabilityOverview";
 import { dateCode, encodeToken } from "@/lib/links";
 import { createClient } from "@/lib/supabase/client";
@@ -197,6 +198,11 @@ export default function AskAvailability({
               })}
             </ul>
           </details>
+          <AvailabilityLog
+            matchId={matchId}
+            players={players}
+            refreshKey={available}
+          />
         </section>
       )}
 
