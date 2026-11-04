@@ -654,7 +654,23 @@ function WedstrijdDetail() {
         </>
       )}
 
-      {show("overzicht") && <Pairs matchId={id} players={pairPlayers} />}
+      {show("overzicht") && (
+        <Pairs
+          matchId={id}
+          players={pairPlayers}
+          reserveIds={reserves.map((p) => p.id)}
+        />
+      )}
+
+      {show("opstelling") && isAdmin && (
+        <Pairs
+          matchId={id}
+          players={pairPlayers}
+          starterIds={starters.map((p) => p.id)}
+          reserveIds={reserves.map((p) => p.id)}
+          editable
+        />
+      )}
 
       {show("uitslag") && (
         <>
@@ -699,7 +715,13 @@ function WedstrijdDetail() {
       )}
 
       {show("uitslag") && isAdmin && (
-        <Pairs matchId={id} players={pairPlayers} editable />
+        <Pairs
+          matchId={id}
+          players={pairPlayers}
+          starterIds={starters.map((p) => p.id)}
+          reserveIds={reserves.map((p) => p.id)}
+          editable
+        />
       )}
 
       {show("uitslag") && (
