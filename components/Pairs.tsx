@@ -20,6 +20,8 @@ type Props = {
   editable?: boolean;
   // De spelers in de basis, om koppels uit te loten.
   starterIds?: string[];
+  // De reserves: die kunnen na de 501 invallen in een koppel.
+  reserveIds?: string[];
 };
 
 // De koppels van een wedstrijd en of ze wonnen (gespeeld na de 501).
@@ -28,6 +30,7 @@ export default function Pairs({
   players,
   editable,
   starterIds = [],
+  reserveIds = [],
 }: Props) {
   const supabase = createClient();
   const [pairs, setPairs] = useState<Pair[]>([]);
@@ -171,6 +174,40 @@ export default function Pairs({
     setPairs((prev) => prev.filter((p) => p.id !== id));
   }
 
+  // De keuzelijst: eerst de basis, dan de reserves (invallers), dan de rest van het team.
+  const options = () => {
+    const group = (
+      label: string,
+      ids: (string | null)[] | null,
+      rest?: boolean,
+    ) => {
+      const list = rest
+        ? players.filter(
+            (pl) => !starterIds.includes(pl.id) && !reserveIds.includes(pl.id),
+          )
+        : players.filter((pl) => ids?.includes(pl.id));
+      if (list.length === 0) return null;
+      return (
+        <optgroup key={label} label={label}>
+          {list.map((pl) => (
+            <option key={pl.id} value={pl.id}>
+              {pl.name}
+            </option>
+          ))}
+        </optgroup>
+      );
+    };
+    return [
+      group("Basis", starterIds),
+      group("Reserve (invaller)", reserveIds),
+      group("Rest van het team", null, true),
+    ];
+  };
+
+  // Een reserve in een koppel is een invaller.
+  const label = (id: string) =>
+    reserveIds.includes(id) ? `${nameOf(id)} (invaller)` : nameOf(id);
+
   if (!editable && pairs.length === 0) return null;
 
   const field = "rounded border border-green-300 p-2 text-gray-900";
@@ -199,11 +236,7 @@ export default function Pairs({
                         aria-label={`Koppel speler ${i + 1}`}
                         className="min-w-0 flex-1 rounded border border-green-300 bg-white p-1.5 text-gray-900"
                       >
-                        {players.map((pl) => (
-                          <option key={pl.id} value={pl.id}>
-                            {pl.name}
-                          </option>
-                        ))}
+                        {options()}
                       </select>
                     </span>
                   ))}
@@ -238,7 +271,7 @@ export default function Pairs({
             ) : (
               <span>
                 <span className="font-semibold">
-                  {nameOf(p.player_a)} &amp; {nameOf(p.player_b)}
+                  {label(p.player_a)} &amp; {label(p.player_b)}
                 </span>
                 {p.won !== null && (
                   <span
@@ -277,11 +310,7 @@ export default function Pairs({
             className={field}
           >
             <option value="">Speler 1...</option>
-            {players.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
+            {options()}
           </select>
           <select
             value={b}
@@ -290,11 +319,7 @@ export default function Pairs({
             className={field}
           >
             <option value="">Speler 2...</option>
-            {players.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
+            {options()}
           </select>
           <select
             value={result}
