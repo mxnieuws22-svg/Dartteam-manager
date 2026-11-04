@@ -656,6 +656,15 @@ function WedstrijdDetail() {
 
       {show("overzicht") && <Pairs matchId={id} players={pairPlayers} />}
 
+      {show("opstelling") && isAdmin && (
+        <Pairs
+          matchId={id}
+          players={pairPlayers}
+          starterIds={starters.map((p) => p.id)}
+          editable
+        />
+      )}
+
       {show("uitslag") && (
         <>
           {isAdmin && (
@@ -699,7 +708,12 @@ function WedstrijdDetail() {
       )}
 
       {show("uitslag") && isAdmin && (
-        <Pairs matchId={id} players={pairPlayers} editable />
+        <Pairs
+          matchId={id}
+          players={pairPlayers}
+          starterIds={starters.map((p) => p.id)}
+          editable
+        />
       )}
 
       {show("uitslag") && (
