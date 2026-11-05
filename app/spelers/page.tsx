@@ -95,7 +95,7 @@ export default function SpelersPage() {
 
   function namesMessage() {
     const lines = withLink.map((p) => `${p.name}: ${linkFor(p)}`);
-    return `Geef via je eigen naam aan of je kunt voor de wedstrijden van Darten met je Hart. Tik op jouw naam:\n\n${lines.join("\n\n")}\n\nDeze lijst blijft altijd werken, ook voor nieuwe wedstrijden. Zet dit bericht vast.`;
+    return `Geef via je eigen naam aan of je kunt voor de wedstrijden van Darten met je Hart. Zo werkt het: tik op de link achter jouw eigen naam en kies Ik kan, Ik kan niet of Nog niet zeker. Wijzigen kan later via dezelfde link.\n\n⚠️ Let op: tik alleen op jouw eigen naam. Anders geef je een antwoord voor een ander.\n\n${lines.join("\n\n")}\n\nDeze lijst blijft altijd werken, ook voor nieuwe wedstrijden. Zet dit bericht vast.`;
   }
 
   async function copyNames() {

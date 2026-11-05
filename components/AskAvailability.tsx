@@ -122,7 +122,7 @@ export default function AskAvailability({
     );
     const lines = list.map((p) => `${p.name}: ${personalLink(p.id)}`);
     whatsApp(
-      `${isHome ? "Thuiswedstrijd" : "Uitwedstrijd"} tegen ${opponentName} op ${longDate()}. Kun je? Tik op jouw eigen naam en geef het door:\n\n${lines.join("\n\n")}`,
+      `${isHome ? "Thuiswedstrijd" : "Uitwedstrijd"} tegen ${opponentName} op ${longDate()}. Kun je? Zo werkt het: tik op de link achter jouw eigen naam en kies Ik kan, Ik kan niet of Nog niet zeker. Wijzigen kan later via dezelfde link.\n\n⚠️ Let op: tik alleen op jouw eigen naam. Anders geef je een antwoord voor een ander.\n\n${lines.join("\n\n")}`,
     );
   }
 
