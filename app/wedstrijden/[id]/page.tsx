@@ -320,6 +320,45 @@ function WedstrijdDetail() {
     setHighlights((prev) => prev.filter((h) => h.id !== highlightId));
   }
 
+  // De opstelling (met koppels, als die er zijn) als bericht voor de groepsapp.
+  async function shareLineup() {
+    if (!match) return;
+    const date = new Date(match.match_date).toLocaleDateString("nl-NL", {
+      dateStyle: "full",
+    });
+    const { data: pairRows } = await supabase
+      .from("pairs")
+      .select("player_a, player_b")
+      .eq("match_id", id)
+      .order("created_at");
+    const nameOf = (pid: string) =>
+      players.find((p) => p.id === pid)?.name ?? "Onbekend";
+    const lines = [
+      `🎯 *Opstelling tegen ${match.opponent || "onbekende tegenstander"}*`,
+      `📅 ${date} · ${match.is_home ? "Thuiswedstrijd" : "Uitwedstrijd"}${
+        match.location ? ` · ${match.location}` : ""
+      }`,
+      "",
+    ];
+    if (starters.length > 0)
+      lines.push(`*Basis:* ${starters.map((p) => p.name).join(", ")}`);
+    if (reserves.length > 0)
+      lines.push(`*Reserve:* ${reserves.map((p) => p.name).join(", ")}`);
+    if (pairRows && pairRows.length > 0) {
+      lines.push(
+        `*Koppels:* ${pairRows
+          .map((r) => `${nameOf(r.player_a)} & ${nameOf(r.player_b)}`)
+          .join(", ")}`,
+      );
+    }
+    lines.push("", "Darten met je Hart ❤️", window.location.origin);
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(lines.join("\n"))}`,
+      "_blank",
+      "noopener",
+    );
+  }
+
   // Haalt iedereen uit de opstelling van deze wedstrijd. Wat spelers hebben doorgegeven blijft staan.
   async function clearLineup() {
     if (!confirm("De hele opstelling van deze wedstrijd wissen?")) return;
@@ -661,6 +700,17 @@ function WedstrijdDetail() {
           reserveIds={reserves.map((p) => p.id)}
         />
       )}
+
+      {isAdmin &&
+        (show("overzicht") || show("opstelling")) &&
+        starters.length + reserves.length > 0 && (
+          <button
+            onClick={shareLineup}
+            className="w-full rounded bg-green-700 px-4 py-2 font-semibold text-white"
+          >
+            Deel opstelling via WhatsApp
+          </button>
+        )}
 
       {show("opstelling") && isAdmin && (
         <Pairs

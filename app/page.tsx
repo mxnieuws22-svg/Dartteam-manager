@@ -181,7 +181,7 @@ export default function Home() {
       dateStyle: "full",
     });
     const lines = [
-      "🎯 Darten met je Hart - 't Berghje",
+      "🎯 Darten met je Hart",
       `Volgende wedstrijd: tegen ${match.opponent || "onbekende tegenstander"}`,
       `📅 ${date} · ${match.is_home ? "Thuiswedstrijd" : "Uitwedstrijd"}${
         match.location ? ` · ${match.location}` : ""
