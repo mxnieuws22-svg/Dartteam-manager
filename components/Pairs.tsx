@@ -40,6 +40,10 @@ export default function Pairs({
   const [legsWon, setLegsWon] = useState("");
   const [legsLost, setLegsLost] = useState("");
   const [error, setError] = useState("");
+  const [draft, setDraft] = useState<{
+    pairs: string[][];
+    left: string;
+  } | null>(null);
 
   async function load() {
     const { data, error } = await supabase
@@ -101,24 +105,34 @@ export default function Pairs({
     }
   }
 
-  // Loot van de spelers in de basis nieuwe koppels, twee aan twee.
-  async function draw() {
-    if (
-      pairs.length > 0 &&
-      !confirm("De huidige koppels vervangen door geloote koppels?")
-    ) {
-      return;
-    }
+  // Loot van de spelers in de basis koppels, twee aan twee. Dit is nog een voorstel:
+  // de beheerder bewaart het of wist het.
+  function draw() {
     setError("");
     const ids = [...starterIds];
     for (let i = ids.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [ids[i], ids[j]] = [ids[j], ids[i]];
     }
-    const rows = [];
+    const drawn: string[][] = [];
     for (let i = 0; i + 1 < ids.length; i += 2) {
-      rows.push({ match_id: matchId, player_a: ids[i], player_b: ids[i + 1] });
+      drawn.push([ids[i], ids[i + 1]]);
     }
+    setDraft({
+      pairs: drawn,
+      left: ids.length % 2 === 1 ? ids[ids.length - 1] : "",
+    });
+  }
+
+  // Bewaart de geloote koppels. De huidige koppels van deze wedstrijd worden vervangen.
+  async function saveDraft() {
+    if (!draft) return;
+    setError("");
+    const rows = draft.pairs.map(([a, b]) => ({
+      match_id: matchId,
+      player_a: a,
+      player_b: b,
+    }));
     const del = await supabase.from("pairs").delete().eq("match_id", matchId);
     const ins = del.error
       ? del
@@ -127,10 +141,11 @@ export default function Pairs({
         : del;
     if (ins.error) {
       setError(
-        "Loten mislukt. Is supabase/koppels.sql al gedraaid in Supabase?",
+        "Bewaren mislukt. Is supabase/koppels.sql al gedraaid in Supabase?",
       );
       return;
     }
+    setDraft(null);
     load();
   }
 
@@ -293,7 +308,51 @@ export default function Pairs({
         ))}
       </ul>
       {error && <p className="text-sm text-red-600">{error}</p>}
-      {editable && starterIds.length >= 2 && (
+      {editable && draft && (
+        <div className="space-y-2 rounded border border-amber-300 bg-amber-50 p-3">
+          <h3 className="font-semibold text-amber-900">
+            Geloot, nog niet bewaard
+          </h3>
+          <ul className="space-y-1">
+            {draft.pairs.map(([a, b]) => (
+              <li key={`${a}-${b}`} className="font-semibold">
+                {label(a)} &amp; {label(b)}
+              </li>
+            ))}
+          </ul>
+          {draft.left && (
+            <p className="text-sm text-amber-900">
+              {label(draft.left)} blijft over (oneven aantal).
+            </p>
+          )}
+          {pairs.length > 0 && (
+            <p className="text-sm text-amber-900">
+              Bewaren vervangt de {pairs.length} koppels die er nu staan.
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={saveDraft}
+              className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
+            >
+              Bewaar koppels
+            </button>
+            <button
+              onClick={() => setDraft(null)}
+              className="rounded border border-red-300 px-4 py-2 font-semibold text-red-700"
+            >
+              Wis loting
+            </button>
+            <button
+              onClick={draw}
+              className="rounded border border-green-300 px-4 py-2 font-semibold text-green-900"
+            >
+              Opnieuw loten
+            </button>
+          </div>
+        </div>
+      )}
+      {editable && !draft && starterIds.length >= 2 && (
         <button
           onClick={draw}
           className="rounded border border-green-300 px-4 py-2 font-semibold text-green-900"
