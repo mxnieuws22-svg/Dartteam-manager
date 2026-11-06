@@ -101,7 +101,11 @@ export default function AskAvailability({
       }
     }
     if (error) {
-      setSaveError("Opslaan mislukt.");
+      setSaveError(
+        answer === "maybe"
+          ? "Twijfel opslaan mislukt. Waarschijnlijk ontbreekt het veld 'nog niet zeker' in de database: draai supabase/beschikbaarheid_links.sql in Supabase."
+          : "Opslaan mislukt.",
+      );
       return;
     }
     onAnswered?.(playerId, answer);
