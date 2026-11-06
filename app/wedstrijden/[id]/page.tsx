@@ -62,7 +62,9 @@ function WedstrijdDetail() {
   >(null);
   const [savedScores, setSavedScores] = useState(false);
   const [scores, setScores] = useState<Record<string, Score>>({});
-  const [order, setOrder] = useState<string[]>([]);
+  // De geloote volgorde voor de 501: eerst een voorstel, dat de beheerder bewaart of wist.
+  const [orderDraft, setOrderDraft] = useState<string[]>([]);
+  const [positions, setPositions] = useState<Record<string, number>>({});
   const [hlPlayer, setHlPlayer] = useState("");
   const [hlKind, setHlKind] = useState<"180" | "finish">("180");
   const [hlValue, setHlValue] = useState("");
@@ -165,6 +167,21 @@ function WedstrijdDetail() {
                 lost: r.legs_lost?.toString() ?? "",
               },
             ]),
+          ),
+        );
+      });
+    // De bewaarde volgorde apart ophalen: bestaat het veld nog niet (SQL niet gedraaid), dan blijft dit leeg.
+    supabase
+      .from("lineup")
+      .select("player_id, position")
+      .eq("match_id", id)
+      .then(({ data, error }) => {
+        if (error) return;
+        setPositions(
+          Object.fromEntries(
+            (data ?? [])
+              .filter((r) => r.position !== null)
+              .map((r) => [r.player_id, r.position as number]),
           ),
         );
       });
@@ -334,7 +351,9 @@ function WedstrijdDetail() {
       "",
     ];
     if (starters.length > 0)
-      lines.push(`*Basis:* ${starters.map((p) => p.name).join(", ")}`);
+      lines.push(
+        `*Basis${Object.keys(positions).length > 0 ? " (volgorde 501)" : ""}:* ${starters.map((p) => p.name).join(", ")}`,
+      );
     if (reserves.length > 0)
       lines.push(`*Reserve:* ${reserves.map((p) => p.name).join(", ")}`);
     lines.push("", "Darten met je Hart ❤️", window.location.origin);
@@ -355,7 +374,8 @@ function WedstrijdDetail() {
       return;
     }
     setLineup({});
-    setOrder([]);
+    setOrderDraft([]);
+    setPositions({});
   }
 
   // Stelt de opstelling samen uit wie kan: 4 in de basis en 1 reserve.
@@ -474,16 +494,49 @@ function WedstrijdDetail() {
       .join(" · ");
   }
 
-  // Een willekeurige volgorde van de spelers in de basis. Wordt niet opgeslagen.
+  // Loot een volgorde voor de 501 van de spelers in de basis. Nog niet bewaard.
   function drawOrder() {
-    const names = players
-      .filter((p) => lineup[p.id] === "starter")
-      .map((p) => p.name);
-    for (let i = names.length - 1; i > 0; i--) {
+    const ids = starters.map((p) => p.id);
+    for (let i = ids.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [names[i], names[j]] = [names[j], names[i]];
+      [ids[i], ids[j]] = [ids[j], ids[i]];
     }
-    setOrder(names);
+    setOrderDraft(ids);
+  }
+
+  // Bewaart de geloote volgorde bij de opstelling.
+  async function saveOrder() {
+    setError("");
+    for (const [i, playerId] of orderDraft.entries()) {
+      const { error } = await supabase
+        .from("lineup")
+        .update({ position: i + 1 })
+        .eq("match_id", id)
+        .eq("player_id", playerId);
+      if (error) {
+        setError(
+          "Opslaan mislukt. Is supabase/volgorde.sql al gedraaid in Supabase?",
+        );
+        return;
+      }
+    }
+    setPositions(Object.fromEntries(orderDraft.map((pid, i) => [pid, i + 1])));
+    setOrderDraft([]);
+  }
+
+  // Wist de bewaarde volgorde.
+  async function clearOrder() {
+    if (!confirm("De bewaarde volgorde wissen?")) return;
+    setError("");
+    const { error } = await supabase
+      .from("lineup")
+      .update({ position: null })
+      .eq("match_id", id);
+    if (error) {
+      setError("Wissen mislukt.");
+      return;
+    }
+    setPositions({});
   }
 
   type Tab = "overzicht" | "kan" | "opstelling" | "uitslag" | "bewerken";
@@ -503,7 +556,10 @@ function WedstrijdDetail() {
     ...players.filter((p) => lineup[p.id]),
     ...players.filter((p) => !lineup[p.id] && p.is_active),
   ];
-  const starters = players.filter((p) => lineup[p.id] === "starter");
+  // Met een bewaarde volgorde staan de spelers in de basis in die volgorde.
+  const starters = players
+    .filter((p) => lineup[p.id] === "starter")
+    .sort((a, b) => (positions[a.id] ?? 99) - (positions[b.id] ?? 99));
   const reserves = players.filter((p) => lineup[p.id] === "reserve");
 
   return (
@@ -647,6 +703,7 @@ function WedstrijdDetail() {
                 <ul className="space-y-1">
                   {starters.map((p) => (
                     <li key={p.id} className="rounded bg-green-100 px-2 py-1">
+                      {positions[p.id] ? `${positions[p.id]}. ` : ""}
                       {p.name}
                       {scoreText(p.id) && (
                         <span className="block text-xs text-green-900/70">
@@ -845,19 +902,69 @@ function WedstrijdDetail() {
         <>
           {isAdmin && starters.length > 1 && (
             <section className="space-y-2 rounded border bg-white p-3">
-              <h2 className="font-semibold">Volgorde loten</h2>
-              <button
-                onClick={drawOrder}
-                className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
-              >
-                {order.length > 0 ? "Opnieuw loten" : "Loot de volgorde"}
-              </button>
-              {order.length > 0 && (
-                <ol className="list-inside list-decimal space-y-1 text-lg font-semibold">
-                  {order.map((name) => (
-                    <li key={name}>{name}</li>
-                  ))}
-                </ol>
+              <h2 className="font-semibold">Volgorde voor de 501</h2>
+              {orderDraft.length > 0 ? (
+                <div className="space-y-2 rounded border border-amber-300 bg-amber-50 p-3">
+                  <h3 className="font-semibold text-amber-900">
+                    Geloot, nog niet bewaard
+                  </h3>
+                  <ol className="list-inside list-decimal space-y-1 text-lg font-semibold">
+                    {orderDraft.map((pid) => (
+                      <li key={pid}>
+                        {players.find((p) => p.id === pid)?.name ?? "Onbekend"}
+                      </li>
+                    ))}
+                  </ol>
+                  {Object.keys(positions).length > 0 && (
+                    <p className="text-sm text-amber-900">
+                      Bewaren vervangt de volgorde die er nu staat.
+                    </p>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={saveOrder}
+                      className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
+                    >
+                      Bewaar volgorde
+                    </button>
+                    <button
+                      onClick={() => setOrderDraft([])}
+                      className="rounded border border-red-300 px-4 py-2 font-semibold text-red-700"
+                    >
+                      Wis loting
+                    </button>
+                    <button
+                      onClick={drawOrder}
+                      className="rounded border border-green-300 px-4 py-2 font-semibold text-green-900"
+                    >
+                      Opnieuw loten
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {Object.keys(positions).length > 0 && (
+                    <p className="text-sm text-green-900/70">
+                      Bewaard: {starters.map((p) => p.name).join(" → ")}
+                    </p>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={drawOrder}
+                      className="rounded bg-green-700 px-4 py-2 font-semibold text-white"
+                    >
+                      Loot de volgorde
+                    </button>
+                    {Object.keys(positions).length > 0 && (
+                      <button
+                        onClick={clearOrder}
+                        className="rounded border border-red-300 px-4 py-2 font-semibold text-red-700"
+                      >
+                        Wis bewaarde volgorde
+                      </button>
+                    )}
+                  </div>
+                </div>
               )}
             </section>
           )}
