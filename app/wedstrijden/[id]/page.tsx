@@ -64,6 +64,7 @@ function WedstrijdDetail() {
   const [scores, setScores] = useState<Record<string, Score>>({});
   // De geloote volgorde voor de 501: eerst een voorstel, dat de beheerder bewaart of wist.
   const [orderDraft, setOrderDraft] = useState<string[]>([]);
+  const [only501, setOnly501] = useState<Record<string, boolean>>({});
   const [positions, setPositions] = useState<Record<string, number>>({});
   const [hlPlayer, setHlPlayer] = useState("");
   const [hlKind, setHlKind] = useState<"180" | "finish">("180");
@@ -167,6 +168,18 @@ function WedstrijdDetail() {
                 lost: r.legs_lost?.toString() ?? "",
               },
             ]),
+          ),
+        );
+      });
+    // Wie alleen de 501 speelt, apart ophalen: bestaat het veld nog niet (SQL niet gedraaid), dan blijft dit leeg.
+    supabase
+      .from("players")
+      .select("id, only_501")
+      .then(({ data, error }) => {
+        if (error) return;
+        setOnly501(
+          Object.fromEntries(
+            (data ?? []).filter((r) => r.only_501).map((r) => [r.id, true]),
           ),
         );
       });
@@ -705,6 +718,11 @@ function WedstrijdDetail() {
                     <li key={p.id} className="rounded bg-green-100 px-2 py-1">
                       {positions[p.id] ? `${positions[p.id]}. ` : ""}
                       {p.name}
+                      {only501[p.id] && (
+                        <span className="ml-2 text-xs text-green-900/60">
+                          alleen 501
+                        </span>
+                      )}
                       {scoreText(p.id) && (
                         <span className="block text-xs text-green-900/70">
                           {scoreText(p.id)}
@@ -741,6 +759,7 @@ function WedstrijdDetail() {
           matchId={id}
           players={pairPlayers}
           reserveIds={reserves.map((p) => p.id)}
+          only501Ids={Object.keys(only501)}
         />
       )}
 
@@ -761,6 +780,7 @@ function WedstrijdDetail() {
           players={pairPlayers}
           starterIds={starters.map((p) => p.id)}
           reserveIds={reserves.map((p) => p.id)}
+          only501Ids={Object.keys(only501)}
           editable
         />
       )}
@@ -813,6 +833,7 @@ function WedstrijdDetail() {
           players={pairPlayers}
           starterIds={starters.map((p) => p.id)}
           reserveIds={reserves.map((p) => p.id)}
+          only501Ids={Object.keys(only501)}
           editable
         />
       )}
