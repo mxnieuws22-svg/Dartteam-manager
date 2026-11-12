@@ -22,6 +22,8 @@ type Props = {
   starterIds?: string[];
   // De reserves: die kunnen na de 501 invallen in een koppel.
   reserveIds?: string[];
+  // Spelers die alleen de 501 spelen en niet in een koppel staan.
+  only501Ids?: string[];
 };
 
 // De koppels van een wedstrijd en of ze wonnen (gespeeld na de 501).
@@ -31,6 +33,7 @@ export default function Pairs({
   editable,
   starterIds = [],
   reserveIds = [],
+  only501Ids = [],
 }: Props) {
   const supabase = createClient();
   const [pairs, setPairs] = useState<Pair[]>([]);
@@ -109,7 +112,7 @@ export default function Pairs({
   // de beheerder bewaart het of wist het.
   function draw() {
     setError("");
-    const ids = [...starterIds];
+    const ids = starterIds.filter((pid) => !only501Ids.includes(pid));
     for (let i = ids.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [ids[i], ids[j]] = [ids[j], ids[i]];
@@ -198,9 +201,14 @@ export default function Pairs({
     ) => {
       const list = rest
         ? players.filter(
-            (pl) => !starterIds.includes(pl.id) && !reserveIds.includes(pl.id),
+            (pl) =>
+              !starterIds.includes(pl.id) &&
+              !reserveIds.includes(pl.id) &&
+              !only501Ids.includes(pl.id),
           )
-        : players.filter((pl) => ids?.includes(pl.id));
+        : players.filter(
+            (pl) => ids?.includes(pl.id) && !only501Ids.includes(pl.id),
+          );
       if (list.length === 0) return null;
       return (
         <optgroup key={label} label={label}>
@@ -216,12 +224,28 @@ export default function Pairs({
       group("Basis", starterIds),
       group("Reserve (invaller)", reserveIds),
       group("Rest van het team", null, true),
+      // Spelers die alleen de 501 spelen, zijn niet te kiezen voor een koppel.
+      only501Ids.length > 0 && (
+        <optgroup key="alleen-501" label="Speelt alleen de 501">
+          {players
+            .filter((pl) => only501Ids.includes(pl.id))
+            .map((pl) => (
+              <option key={pl.id} value={pl.id} disabled>
+                {pl.name}
+              </option>
+            ))}
+        </optgroup>
+      ),
     ];
   };
 
   // Een reserve in een koppel is een invaller.
   const label = (id: string) =>
-    reserveIds.includes(id) ? `${nameOf(id)} (invaller)` : nameOf(id);
+    only501Ids.includes(id)
+      ? `${nameOf(id)} (alleen 501)`
+      : reserveIds.includes(id)
+        ? `${nameOf(id)} (invaller)`
+        : nameOf(id);
 
   if (!editable && pairs.length === 0) return null;
 
@@ -352,14 +376,16 @@ export default function Pairs({
           </div>
         </div>
       )}
-      {editable && !draft && starterIds.length >= 2 && (
-        <button
-          onClick={draw}
-          className="rounded border border-green-300 px-4 py-2 font-semibold text-green-900"
-        >
-          Loot koppels uit de basis
-        </button>
-      )}
+      {editable &&
+        !draft &&
+        starterIds.filter((pid) => !only501Ids.includes(pid)).length >= 2 && (
+          <button
+            onClick={draw}
+            className="rounded border border-green-300 px-4 py-2 font-semibold text-green-900"
+          >
+            Loot koppels uit de basis
+          </button>
+        )}
       {editable && (
         <form onSubmit={add} className="flex flex-wrap gap-2">
           <select

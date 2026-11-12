@@ -11,6 +11,7 @@ type Player = {
   name: string;
   is_reserve: boolean;
   is_active: boolean;
+  only_501?: boolean;
 };
 
 export default function SpelersPage() {
@@ -25,11 +26,23 @@ export default function SpelersPage() {
   const [teamToken, setTeamToken] = useState("");
 
   async function loadPlayers() {
-    const { data, error } = await supabase
+    // Met "alleen 501"; bestaat dat veld nog niet (SQL niet gedraaid), dan zonder.
+    const withFlag = await supabase
       .from("players")
-      .select("id, name, is_reserve, is_active")
+      .select("id, name, is_reserve, is_active, only_501")
       .order("is_reserve")
       .order("name");
+    const result = withFlag.error
+      ? await supabase
+          .from("players")
+          .select("id, name, is_reserve, is_active")
+          .order("is_reserve")
+          .order("name")
+      : withFlag;
+    const { data, error } = result as {
+      data: Player[] | null;
+      error: { message: string } | null;
+    };
 
     if (error) {
       setError("Spelers laden mislukt.");
@@ -145,6 +158,22 @@ export default function SpelersPage() {
 
     if (error) {
       setError("Speler verwijderen mislukt.");
+      return;
+    }
+    loadPlayers();
+  }
+
+  async function setOnly501(p: Player, value: boolean) {
+    setError("");
+    const { error } = await supabase
+      .from("players")
+      .update({ only_501: value })
+      .eq("id", p.id);
+
+    if (error) {
+      setError(
+        "Opslaan mislukt. Is supabase/alleen_501.sql al gedraaid in Supabase?",
+      );
       return;
     }
     loadPlayers();
@@ -280,7 +309,7 @@ export default function SpelersPage() {
             >
               {p.name}
               {isAdmin && (
-                <div className="flex items-center gap-3 text-sm">
+                <div className="flex flex-wrap items-center justify-end gap-3 text-sm">
                   {tokens[p.id] && (
                     <>
                       <button
@@ -297,6 +326,17 @@ export default function SpelersPage() {
                       </button>
                     </>
                   )}
+                  <button
+                    onClick={() => setOnly501(p, !p.only_501)}
+                    aria-pressed={p.only_501 === true}
+                    className={
+                      p.only_501
+                        ? "rounded bg-green-100 px-2 py-0.5 font-semibold text-green-900"
+                        : "text-green-700"
+                    }
+                  >
+                    {p.only_501 ? "Alleen 501 ✓" : "Alleen 501"}
+                  </button>
                   <button
                     onClick={() => setActive(p, false)}
                     className="text-green-700"
@@ -322,7 +362,7 @@ export default function SpelersPage() {
             >
               {p.name}
               {isAdmin && (
-                <div className="flex items-center gap-3 text-sm">
+                <div className="flex flex-wrap items-center justify-end gap-3 text-sm">
                   {tokens[p.id] && (
                     <>
                       <button
@@ -339,6 +379,17 @@ export default function SpelersPage() {
                       </button>
                     </>
                   )}
+                  <button
+                    onClick={() => setOnly501(p, !p.only_501)}
+                    aria-pressed={p.only_501 === true}
+                    className={
+                      p.only_501
+                        ? "rounded bg-green-100 px-2 py-0.5 font-semibold text-green-900"
+                        : "text-green-700"
+                    }
+                  >
+                    {p.only_501 ? "Alleen 501 ✓" : "Alleen 501"}
+                  </button>
                   <button
                     onClick={() => setActive(p, false)}
                     className="text-green-700"
@@ -369,7 +420,7 @@ export default function SpelersPage() {
               >
                 {p.name}
                 {isAdmin && (
-                  <div className="flex items-center gap-3 text-sm">
+                  <div className="flex flex-wrap items-center justify-end gap-3 text-sm">
                     <button
                       onClick={() => setActive(p, true)}
                       className="text-green-700"
