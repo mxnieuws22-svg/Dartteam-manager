@@ -56,6 +56,8 @@ function WedstrijdDetail() {
   const [editDate, setEditDate] = useState("");
   const [editIsHome, setEditIsHome] = useState(true);
   const [editLocation, setEditLocation] = useState("");
+  const [editTentative, setEditTentative] = useState(false);
+  const [tentative, setTentative] = useState(false);
   const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [tab, setTab] = useState<
     "overzicht" | "kan" | "opstelling" | "uitslag" | "bewerken" | null
@@ -111,6 +113,17 @@ function WedstrijdDetail() {
     setEditDate(m.data.match_date);
     setEditIsHome(m.data.is_home);
     setEditLocation(m.data.location ?? "");
+    // "Datum mogelijk" apart ophalen: bestaat het veld nog niet (SQL niet gedraaid), dan blijft dit uit.
+    supabase
+      .from("matches")
+      .select("date_tentative")
+      .eq("id", id)
+      .single()
+      .then(({ data, error }) => {
+        if (error) return;
+        setTentative(data.date_tentative === true);
+        setEditTentative(data.date_tentative === true);
+      });
     // Spelers die het team hebben verlaten blijven alleen zichtbaar als ze bij deze wedstrijd horen.
     const linked = new Set([
       ...(a.data ?? []).map((r) => r.player_id),
@@ -258,6 +271,20 @@ function WedstrijdDetail() {
       return;
     }
     setMatch((prev) => (prev ? { ...prev, ...update } : prev));
+
+    if (editTentative !== tentative) {
+      const flag = await supabase
+        .from("matches")
+        .update({ date_tentative: editTentative })
+        .eq("id", id);
+      if (flag.error) {
+        setError(
+          "De wedstrijd is opgeslagen, maar 'mogelijk' kon niet worden bewaard. Is supabase/datum_mogelijk.sql al gedraaid in Supabase?",
+        );
+        return;
+      }
+      setTentative(editTentative);
+    }
   }
 
   async function saveResult(e: React.FormEvent) {
@@ -358,7 +385,7 @@ function WedstrijdDetail() {
     });
     const lines = [
       `🎯 *Opstelling tegen ${match.opponent || "onbekende tegenstander"}*`,
-      `📅 ${date} · ${match.is_home ? "Thuiswedstrijd" : "Uitwedstrijd"}${
+      `📅 ${date}${tentative ? " (datum nog niet zeker)" : ""} · ${match.is_home ? "Thuiswedstrijd" : "Uitwedstrijd"}${
         match.location ? ` · ${match.location}` : ""
       }`,
       "",
@@ -587,6 +614,11 @@ function WedstrijdDetail() {
             {new Date(match.match_date).toLocaleDateString("nl-NL", {
               dateStyle: "full",
             })}
+            {tentative && (
+              <span className="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-900">
+                mogelijk
+              </span>
+            )}
             {" · "}
             <span className="font-semibold">
               {match.is_home ? "Thuiswedstrijd" : "Uitwedstrijd"}
@@ -631,6 +663,7 @@ function WedstrijdDetail() {
           {isAdmin && upcoming && match && (
             <AskAvailability
               matchId={id}
+              tentative={tentative}
               onAnswered={(playerId, answer) => {
                 setAvailable((prev) => {
                   const next = { ...prev };
@@ -1100,6 +1133,14 @@ function WedstrijdDetail() {
                   <option value="home">Thuiswedstrijd</option>
                   <option value="away">Uitwedstrijd</option>
                 </select>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={editTentative}
+                    onChange={(e) => setEditTentative(e.target.checked)}
+                  />
+                  Datum is nog niet zeker (mogelijk)
+                </label>
                 <input
                   type="text"
                   placeholder="Locatie (optioneel)"

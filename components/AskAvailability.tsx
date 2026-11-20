@@ -11,6 +11,8 @@ type Player = { id: string; name: string; is_active?: boolean };
 
 type Props = {
   matchId: string;
+  // De datum is nog niet zeker: dat komt in de berichten te staan.
+  tentative?: boolean;
   // Wordt aangeroepen nadat de beheerder zelf een antwoord heeft ingevuld.
   onAnswered?: (playerId: string, answer: Answer | "open") => void;
   opponent: string | null;
@@ -26,6 +28,7 @@ type Props = {
 // Voor de beheerder: de groepslink en de persoonlijke links om te vragen wie er kan bij één wedstrijd.
 export default function AskAvailability({
   matchId,
+  tentative,
   onAnswered,
   opponent,
   matchDate,
@@ -67,7 +70,8 @@ export default function AskAvailability({
     `${window.location.origin}/ik/${encodeToken(tokens[playerId])}?w=${dateCode(matchDate)}`;
 
   const longDate = () =>
-    new Date(matchDate).toLocaleDateString("nl-NL", { dateStyle: "full" });
+    new Date(matchDate).toLocaleDateString("nl-NL", { dateStyle: "full" }) +
+    (tentative ? " (datum nog niet zeker)" : "");
   const opponentName = opponent || "de tegenstander";
 
   async function copy(key: string, link: string) {

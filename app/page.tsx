@@ -10,6 +10,7 @@ import Tournaments from "@/components/Tournaments";
 import ScoreBadge from "@/components/ScoreBadge";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 import { useStandalone } from "@/lib/useStandalone";
+import { useTentative } from "@/lib/useTentative";
 
 type Match = {
   id: string;
@@ -35,6 +36,7 @@ export default function Home() {
   const supabase = createClient();
   const isAdmin = useIsAdmin();
   const isApp = useStandalone();
+  const tentative = useTentative();
   const [loaded, setLoaded] = useState(false);
   const [match, setMatch] = useState<Match | null>(null);
   const [later, setLater] = useState<Match[]>([]);
@@ -183,7 +185,7 @@ export default function Home() {
     const lines = [
       "🎯 Darten met je Hart",
       `Volgende wedstrijd: tegen ${match.opponent || "onbekende tegenstander"}`,
-      `📅 ${date} · ${match.is_home ? "Thuiswedstrijd" : "Uitwedstrijd"}${
+      `📅 ${date}${tentative[match.id] ? " (datum nog niet zeker)" : ""} · ${match.is_home ? "Thuiswedstrijd" : "Uitwedstrijd"}${
         match.location ? ` · ${match.location}` : ""
       }`,
     ];
@@ -243,6 +245,11 @@ export default function Home() {
                 {new Date(match.match_date).toLocaleDateString("nl-NL", {
                   dateStyle: "full",
                 })}
+                {tentative[match.id] && (
+                  <span className="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-900">
+                    mogelijk
+                  </span>
+                )}
                 {" · "}
                 <span className="font-semibold">
                   {match.is_home ? "Thuiswedstrijd" : "Uitwedstrijd"}
@@ -333,6 +340,7 @@ export default function Home() {
       {isAdmin && match && (
         <AskAvailability
           matchId={match.id}
+          tentative={tentative[match.id] === true}
           onAnswered={(id, answer) => {
             setAvailability((prev) => {
               const next = { ...prev };
@@ -393,6 +401,7 @@ function MatchList({
   matches: Match[];
   played?: Record<string, Played>;
 }) {
+  const tentativeMap = useTentative();
   if (matches.length === 0) return null;
 
   return (
@@ -422,6 +431,11 @@ function MatchList({
                       {m.opponent || "Tegenstander onbekend"}
                     </div>
                     <div className="truncate text-sm text-green-900/60">
+                      {tentativeMap[m.id] && (
+                        <span className="mr-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-900">
+                          mogelijk
+                        </span>
+                      )}
                       {m.is_home ? "Thuis" : "Uit"}
                       {m.location && ` · ${m.location}`}
                     </div>
