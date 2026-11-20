@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import ScoreBadge from "@/components/ScoreBadge";
 import { createClient } from "@/lib/supabase/client";
+import { useTentative } from "@/lib/useTentative";
 
 type Item = {
   key: string;
@@ -38,6 +39,7 @@ export default function AgendaPage() {
   const supabase = createClient();
   const [items, setItems] = useState<Item[]>([]);
   const [today, setToday] = useState("");
+  const tentative = useTentative();
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");
 
@@ -92,8 +94,14 @@ export default function AgendaPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const upcoming = items.filter((i) => i.date >= today);
-  const past = items.filter((i) => i.date < today).reverse();
+  // Een wedstrijd met een datum die nog niet zeker is, krijgt de aanduiding "datum mogelijk".
+  const shown = items.map((i) =>
+    i.kind === "match" && tentative[i.key.slice(2)]
+      ? { ...i, sub: `datum mogelijk${i.sub ? ` · ${i.sub}` : ""}` }
+      : i,
+  );
+  const upcoming = shown.filter((i) => i.date >= today);
+  const past = shown.filter((i) => i.date < today).reverse();
 
   return (
     <main className="mx-auto max-w-2xl space-y-6 p-4">

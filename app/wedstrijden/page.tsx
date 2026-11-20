@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import Tournaments from "@/components/Tournaments";
 import ScoreBadge from "@/components/ScoreBadge";
 import { useIsAdmin } from "@/lib/useIsAdmin";
+import { useTentative } from "@/lib/useTentative";
 
 type Match = {
   id: string;
@@ -176,6 +177,7 @@ function MatchSection({
   isAdmin: boolean;
   onDelete: (id: string) => void;
 }) {
+  const tentativeMap = useTentative();
   return (
     <section>
       <h2 className="mb-2 text-lg font-semibold">
@@ -210,6 +212,11 @@ function MatchSection({
                 <div className="truncate text-sm text-green-900/60">
                   {date.toLocaleDateString("nl-NL", { weekday: "long" })}
                   {" · "}
+                  {tentativeMap[m.id] && (
+                    <span className="mr-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-900">
+                      mogelijk
+                    </span>
+                  )}
                   <span className="font-semibold text-green-900">
                     {m.is_home ? "Thuis" : "Uit"}
                   </span>
